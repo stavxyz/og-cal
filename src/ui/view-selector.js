@@ -1,6 +1,6 @@
 import { setView } from '../router.js';
 
-const VIEW_LABELS = {
+const DEFAULT_VIEW_LABELS = {
   month: 'Month',
   week: 'Week',
   day: 'Day',
@@ -8,8 +8,11 @@ const VIEW_LABELS = {
   list: 'List',
 };
 
-export function renderViewSelector(container, views, activeView, isMobile) {
-  const filtered = isMobile ? views.filter(v => v !== 'week') : views;
+export function renderViewSelector(container, views, activeView, isMobile, config) {
+  const i18n = (config && config.i18n) || {};
+  const viewLabels = { ...DEFAULT_VIEW_LABELS, ...i18n.viewLabels };
+  const mobileHiddenViews = (config && config.mobileHiddenViews) || ['week'];
+  const filtered = isMobile ? views.filter(v => !mobileHiddenViews.includes(v)) : views;
 
   const bar = document.createElement('div');
   bar.className = 'ogcal-view-selector';
@@ -18,10 +21,10 @@ export function renderViewSelector(container, views, activeView, isMobile) {
   for (const view of filtered) {
     const tab = document.createElement('button');
     tab.className = 'ogcal-view-tab' + (view === activeView ? ' ogcal-view-tab--active' : '');
-    tab.textContent = VIEW_LABELS[view] || view;
+    tab.textContent = viewLabels[view] || view;
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-selected', view === activeView ? 'true' : 'false');
-    tab.addEventListener('click', () => setView(view));
+    tab.addEventListener('click', () => setView(view, config));
     bar.appendChild(tab);
   }
 

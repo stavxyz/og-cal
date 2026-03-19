@@ -16,6 +16,40 @@ const DEFAULTS = {
   showPastEvents: false,
   views: ['month', 'week', 'day', 'grid', 'list'],
   theme: {},
+  locale: null, // defaults to navigator.language || 'en-US' at runtime
+  weekStartDay: 0, // 0=Sunday, 1=Monday, etc.
+  storageKeyPrefix: 'ogcal',
+  mobileBreakpoint: 768,
+  mobileDefaultView: 'list',
+  mobileHiddenViews: ['week'],
+  maxEventsPerDay: 3,
+  locationLinkTemplate: 'https://maps.google.com/?q={location}',
+  imageExtensions: null, // null = use defaults in images.js
+  knownPlatforms: null, // null = use defaults in links.js
+  sanitization: null, // null = use defaults in description.js
+  eventFilter: null,
+  eventTransform: null,
+  onEventClick: null,
+  onViewChange: null,
+  onError: null,
+  onDataLoad: null,
+  renderEmpty: null,
+  renderLoading: null,
+  renderError: null,
+  i18n: {},
+};
+
+const I18N_DEFAULTS = {
+  viewLabels: { month: 'Month', week: 'Week', day: 'Day', grid: 'Grid', list: 'List' },
+  noUpcomingEvents: 'No upcoming events.',
+  showPastEvents: 'Show past events',
+  hidePastEvents: 'Hide past events',
+  couldNotLoad: 'Could not load events.',
+  retry: 'Retry',
+  allDay: 'All Day',
+  noEventsThisDay: 'No events this day.',
+  back: '\u2190 Back',
+  moreEvents: '+{count} more',
 };
 
 const THEME_DEFAULTS = {
@@ -31,6 +65,12 @@ const THEME_DEFAULTS = {
 
 export function init(userConfig) {
   const config = { ...DEFAULTS, ...userConfig };
+  config.i18n = { ...I18N_DEFAULTS, ...config.i18n };
+  if (config.i18n.viewLabels) {
+    config.i18n.viewLabels = { ...I18N_DEFAULTS.viewLabels, ...(userConfig && userConfig.i18n && userConfig.i18n.viewLabels) };
+  }
+  config.locale = config.locale || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+
   const theme = { ...THEME_DEFAULTS, ...config.theme };
   const el = typeof config.el === 'string' ? document.querySelector(config.el) : config.el;
 
@@ -66,7 +106,7 @@ export function init(userConfig) {
   let currentDate = new Date();
   let lastView = null;
 
-  const isMobile = () => window.innerWidth < 768;
+  const isMobile = () => window.innerWidth < config.mobileBreakpoint;
 
   function getFilteredEvents() {
     if (!data) return [];
@@ -83,40 +123,52 @@ export function init(userConfig) {
     const events = getFilteredEvents();
     const timezone = data?.calendar?.timezone || 'UTC';
 
+    // Fire onViewChange callback
+    if (config.onViewChange && viewState.view !== 'detail') {
+      const oldView = lastView;
+      if (oldView !== viewState.view) {
+        config.onViewChange(viewState.view, oldView);
+      }
+    }
+
     // Don't render selector for detail view
     if (viewState.view !== 'detail') {
-      renderViewSelector(selectorContainer, config.views, viewState.view, isMobile());
+      renderViewSelector(selectorContainer, config.views, viewState.view, isMobile(), config);
       lastView = viewState.view;
     }
 
     switch (viewState.view) {
       case 'month':
-        renderMonthView(viewContainer, events, timezone, currentDate);
+        renderMonthView(viewContainer, events, timezone, currentDate, config);
         break;
       case 'week':
-        renderWeekView(viewContainer, events, timezone, currentDate);
+        renderWeekView(viewContainer, events, timezone, currentDate, config);
         break;
       case 'day': {
         const dayDate = viewState.date ? new Date(viewState.date) : currentDate;
-        renderDayView(viewContainer, events, timezone, dayDate);
+        renderDayView(viewContainer, events, timezone, dayDate, config);
         break;
       }
       case 'grid':
-        renderGridView(viewContainer, events, timezone);
+        renderGridView(viewContainer, events, timezone, config);
         break;
       case 'list':
-        renderListView(viewContainer, events, timezone);
+        renderListView(viewContainer, events, timezone, config);
         break;
       case 'detail': {
         const event = data?.events?.find(e => e.id === viewState.eventId);
         if (event) {
+          if (config.onEventClick) {
+            const result = config.onEventClick(event, 'detail');
+            if (result === false) return;
+          }
           selectorContainer.innerHTML = '';
           renderDetailView(viewContainer, event, timezone, () => {
-            if (lastView) setView(lastView);
+            if (lastView) setView(lastView, config);
             else window.history.back();
-          });
+          }, config);
         } else {
-          renderError(viewContainer, 'Event not found.', () => renderView({ view: config.defaultView }));
+          renderError(viewContainer, 'Event not found.', () => renderView({ view: config.defaultView }), config);
         }
         return; // skip past toggle for detail
       }
@@ -127,7 +179,7 @@ export function init(userConfig) {
       renderPastToggle(toggleContainer, showPast, () => {
         showPast = !showPast;
         renderView(viewState);
-      });
+      }, config);
     } else {
       toggleContainer.innerHTML = '';
     }
@@ -137,27 +189,33 @@ export function init(userConfig) {
       renderEmpty(viewContainer, hasPastEvents(), () => {
         showPast = true;
         renderView(viewState);
-      });
+      }, config);
     }
   }
 
   // Load and render
   async function start() {
-    renderLoading(viewContainer);
+    renderLoading(viewContainer, config);
 
     try {
       data = await loadData(config);
+      if (config.onDataLoad) {
+        config.onDataLoad(data);
+      }
     } catch (err) {
       console.error('og-cal:', err);
-      renderError(viewContainer, err.message, start);
+      if (config.onError) {
+        config.onError(err);
+      }
+      renderError(viewContainer, err.message, start, config);
       return;
     }
 
-    const initial = getInitialView(config.defaultView, config.views);
+    const initial = getInitialView(config.defaultView, config.views, config);
 
-    // On mobile, override to list if no hash specified
+    // On mobile, override to mobileDefaultView if no hash specified
     if (isMobile() && !parseHash()) {
-      initial.view = 'list';
+      initial.view = config.mobileDefaultView;
     }
 
     renderView(initial);
@@ -168,4 +226,63 @@ export function init(userConfig) {
   }
 
   start();
+}
+
+// Auto-init from data attributes
+function autoInit() {
+  const elements = document.querySelectorAll('[data-og-cal]');
+  for (const el of elements) {
+    const config = { el };
+    const dataset = el.dataset;
+
+    // Simple string/number configs from data attributes
+    if (dataset.calendarId || dataset.apiKey) {
+      config.google = {};
+      if (dataset.calendarId) config.google.calendarId = dataset.calendarId;
+      if (dataset.apiKey) config.google.apiKey = dataset.apiKey;
+      if (dataset.maxResults) config.google.maxResults = parseInt(dataset.maxResults, 10);
+    }
+    if (dataset.fetchUrl) config.fetchUrl = dataset.fetchUrl;
+    if (dataset.defaultView) config.defaultView = dataset.defaultView;
+    if (dataset.locale) config.locale = dataset.locale;
+    if (dataset.weekStartDay) config.weekStartDay = parseInt(dataset.weekStartDay, 10);
+    if (dataset.storageKeyPrefix) config.storageKeyPrefix = dataset.storageKeyPrefix;
+    if (dataset.mobileBreakpoint) config.mobileBreakpoint = parseInt(dataset.mobileBreakpoint, 10);
+    if (dataset.mobileDefaultView) config.mobileDefaultView = dataset.mobileDefaultView;
+    if (dataset.maxEventsPerDay) config.maxEventsPerDay = parseInt(dataset.maxEventsPerDay, 10);
+    if (dataset.locationLinkTemplate) config.locationLinkTemplate = dataset.locationLinkTemplate;
+    if (dataset.showPastEvents !== undefined) config.showPastEvents = dataset.showPastEvents === 'true';
+
+    // Theme from data attributes: data-theme-primary, data-theme-background, etc.
+    const theme = {};
+    let hasTheme = false;
+    for (const [key, value] of Object.entries(dataset)) {
+      if (key.startsWith('theme') && key.length > 5) {
+        const themeProp = key.charAt(5).toLowerCase() + key.slice(6);
+        theme[themeProp] = value;
+        hasTheme = true;
+      }
+    }
+    if (hasTheme) config.theme = theme;
+
+    // Views from comma-separated data attribute
+    if (dataset.views) {
+      config.views = dataset.views.split(',').map(v => v.trim());
+    }
+    if (dataset.mobileHiddenViews) {
+      config.mobileHiddenViews = dataset.mobileHiddenViews.split(',').map(v => v.trim());
+    }
+
+    init(config);
+  }
+}
+
+// Auto-init when DOM is ready
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoInit);
+  } else {
+    // DOM already loaded, use microtask to allow inline scripts to run first
+    Promise.resolve().then(autoInit);
+  }
 }

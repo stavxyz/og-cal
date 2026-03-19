@@ -1,4 +1,4 @@
-const KNOWN_PLATFORMS = [
+const DEFAULT_PLATFORMS = [
   { pattern: /eventbrite\.com/i, label: 'RSVP on Eventbrite' },
   { pattern: /docs\.google\.com\/forms/i, label: 'Fill Out Form' },
   { pattern: /goo\.gl\/maps|maps\.app\.goo\.gl|google\.com\/maps/i, label: 'View on Map' },
@@ -8,14 +8,15 @@ const KNOWN_PLATFORMS = [
 
 const URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
 
-export function extractLinks(description) {
+export function extractLinks(description, config) {
   if (!description) return { links: [], description };
+  const platforms = (config && config.knownPlatforms) || DEFAULT_PLATFORMS;
   const links = [];
   let cleaned = description;
 
   const urls = description.match(URL_PATTERN) || [];
   for (const url of urls) {
-    for (const platform of KNOWN_PLATFORMS) {
+    for (const platform of platforms) {
       if (platform.pattern.test(url)) {
         links.push({ label: platform.label, url });
         cleaned = cleaned.replace(url, '').trim();
