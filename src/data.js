@@ -7,7 +7,12 @@ export async function loadData(config) {
 
   // Mode 1: Pre-loaded data
   if (config.data) {
-    data = config.data;
+    // Auto-detect raw Google Calendar API response (has `items` instead of `events`)
+    if (config.data.items && !config.data.events) {
+      data = transformGoogleEvents(config.data, config);
+    } else {
+      data = config.data;
+    }
   }
   // Mode 2: Fetch from URL
   else if (config.fetchUrl) {
@@ -141,6 +146,7 @@ export function transformGoogleEvents(googleData, config) {
     events,
     calendar: {
       name: googleData.summary || '',
+      description: googleData.description || '',
       timezone: googleData.timeZone || 'UTC',
     },
     generated: new Date().toISOString(),

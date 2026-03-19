@@ -2355,7 +2355,11 @@ ${text}</tr>
   async function loadData(config) {
     let data;
     if (config.data) {
-      data = config.data;
+      if (config.data.items && !config.data.events) {
+        data = transformGoogleEvents(config.data, config);
+      } else {
+        data = config.data;
+      }
     } else if (config.fetchUrl) {
       const res = await fetch(config.fetchUrl);
       if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`);
@@ -2453,6 +2457,7 @@ ${text}</tr>
       events,
       calendar: {
         name: googleData.summary || "",
+        description: googleData.description || "",
         timezone: googleData.timeZone || "UTC"
       },
       generated: (/* @__PURE__ */ new Date()).toISOString()
