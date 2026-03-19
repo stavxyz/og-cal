@@ -92,9 +92,11 @@ OgCal.init({
 | Day | `#day` or `#day/2026-04-04` | Single day events |
 | Grid | `#grid` | Card layout with flyer images |
 | List | `#list` | Compact chronological list |
-| Detail | `#event/<id>` | Full event page |
+| Detail | `#event/<id>` | Two-column layout with image gallery + event info |
 
 The view selector bar lets visitors switch between views. Selection is saved in localStorage.
+
+Detail view uses a **two-column layout** when an event has images: gallery on the left, event details on the right. Stacks vertically on mobile.
 
 ## Configuration
 
@@ -322,9 +324,19 @@ Image sources (combined in order):
    });
    ```
 
-3. **No image** — grid view shows a placeholder; detail view shows no image header.
+3. **No image** — grid view shows a placeholder; detail view shows no image column.
 
-Images display with `object-fit: contain` in detail view (full image visible) and `object-fit: cover` in grid view (cropped to 16:9 cards).
+Images display with `object-fit: contain` in the detail gallery (full image visible) and `object-fit: cover` in grid view (cropped to 16:9 cards). The gallery supports keyboard navigation (← → arrow keys).
+
+### Automatic enrichment
+
+og-cal enriches events from **all data sources** — not just Google API mode. If you provide pre-loaded data or use a fetch URL, og-cal will still:
+- Extract image URLs from descriptions
+- Extract platform links from descriptions (even when wrapped in `<a>` tags)
+- Detect description format (HTML, markdown, plain text)
+- Check attachments for image thumbnails
+
+This means your server-side code can pass raw event data without duplicating extraction logic.
 
 ### Link extraction
 
