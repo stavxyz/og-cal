@@ -3197,7 +3197,14 @@ ${text}</tr>
     if (description) {
       const p = document.createElement("p");
       p.className = "ogcal-header-description";
-      p.textContent = description;
+      if (subscribeUrl && /subscribe/i.test(description)) {
+        p.innerHTML = description.replace(
+          /(subscribe)/i,
+          `<a href="${subscribeUrl}" target="_blank" rel="noopener" class="ogcal-header-description-link">$1</a>`
+        );
+      } else {
+        p.textContent = description;
+      }
       textCol.appendChild(p);
     }
     header.appendChild(textCol);

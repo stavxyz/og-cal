@@ -51,6 +51,15 @@
   margin: 0.25rem 0 0;
   line-height: 1.4;
 }
+.ogcal-header-description-link {
+  color: var(--ogcal-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+.ogcal-header-description-link:hover {
+  opacity: 0.8;
+}
 .ogcal-header-subscribe {
   flex-shrink: 0;
   display: inline-flex;
