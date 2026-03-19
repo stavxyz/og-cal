@@ -95,6 +95,14 @@
   flex-shrink: 0;
 }
 
+.ogcal-header-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: var(--ogcal-radius);
+}
+
 .ogcal-view-container {
   min-height: 200px;
 }

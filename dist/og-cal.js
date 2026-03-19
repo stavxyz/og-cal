@@ -3159,8 +3159,8 @@ ${text}</tr>
       container.innerHTML = "";
       return;
     }
-    const name = calendarData?.name || "";
-    const description = calendarData?.description || "";
+    const name = config.headerTitle ?? calendarData?.name ?? "";
+    const description = config.headerDescription ?? calendarData?.description ?? "";
     if (!name && !description) {
       container.innerHTML = "";
       return;
@@ -3178,6 +3178,14 @@ ${text}</tr>
     }
     const header = document.createElement("div");
     header.className = "ogcal-header";
+    if (config.headerIcon) {
+      const icon = document.createElement("img");
+      icon.className = "ogcal-header-icon";
+      icon.src = config.headerIcon;
+      icon.alt = "";
+      icon.loading = "lazy";
+      header.appendChild(icon);
+    }
     const textCol = document.createElement("div");
     textCol.className = "ogcal-header-text";
     if (name) {
@@ -3234,6 +3242,12 @@ ${text}</tr>
     onError: null,
     onDataLoad: null,
     showHeader: true,
+    headerTitle: null,
+    // override calendar name
+    headerDescription: null,
+    // override calendar description
+    headerIcon: null,
+    // URL to icon/logo image
     subscribeUrl: null,
     // auto-generated from google.calendarId if not set
     renderEmpty: null,

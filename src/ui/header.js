@@ -6,8 +6,9 @@ export function renderHeader(container, calendarData, config) {
     return;
   }
 
-  const name = calendarData?.name || '';
-  const description = calendarData?.description || '';
+  // Config overrides calendar data
+  const name = config.headerTitle ?? calendarData?.name ?? '';
+  const description = config.headerDescription ?? calendarData?.description ?? '';
   if (!name && !description) {
     container.innerHTML = '';
     return;
@@ -30,6 +31,16 @@ export function renderHeader(container, calendarData, config) {
 
   const header = document.createElement('div');
   header.className = 'ogcal-header';
+
+  // Optional icon/logo
+  if (config.headerIcon) {
+    const icon = document.createElement('img');
+    icon.className = 'ogcal-header-icon';
+    icon.src = config.headerIcon;
+    icon.alt = '';
+    icon.loading = 'lazy';
+    header.appendChild(icon);
+  }
 
   const textCol = document.createElement('div');
   textCol.className = 'ogcal-header-text';

@@ -36,7 +36,10 @@ const DEFAULTS = {
   onError: null,
   onDataLoad: null,
   showHeader: true,
-  subscribeUrl: null, // auto-generated from google.calendarId if not set
+  headerTitle: null,       // override calendar name
+  headerDescription: null, // override calendar description
+  headerIcon: null,        // URL to icon/logo image
+  subscribeUrl: null,      // auto-generated from google.calendarId if not set
   renderEmpty: null,
   renderLoading: null,
   renderError: null,
