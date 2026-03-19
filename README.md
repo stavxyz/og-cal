@@ -155,14 +155,16 @@ OgCal.init({
   imageExtensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
 
   // --- Link extraction ---
+  // All built-in: Eventbrite, Google Forms, Google Maps, Zoom, Google Meet,
+  // Instagram, Facebook, X/Twitter, Reddit, YouTube, TikTok, LinkedIn,
+  // Discord, Luma, Mobilize, Action Network, GoFundMe.
+  // Social platforms auto-detect handles from URLs:
+  //   "https://instagram.com/savebigbend" → "Follow @savebigbend on Instagram"
+  // Override with your own array, or use labelFn for dynamic labels:
   knownPlatforms: [
-    { pattern: /eventbrite\.com/i, label: 'RSVP on Eventbrite' },
-    { pattern: /docs\.google\.com\/forms/i, label: 'Fill Out Form' },
-    { pattern: /goo\.gl\/maps|maps\.app\.goo\.gl|google\.com\/maps/i, label: 'View on Map' },
-    { pattern: /zoom\.us/i, label: 'Join Zoom' },
-    { pattern: /meet\.google\.com/i, label: 'Join Google Meet' },
-    // Add your own:
-    // { pattern: /lu\.ma/i, label: 'RSVP on Luma' },
+    ...OgCal.DEFAULTS?.knownPlatforms || [],
+    { pattern: /your-site\.com/i, label: 'Visit Our Site' },
+    { pattern: /custom\.app/i, labelFn: (url) => `Open ${new URL(url).pathname}` },
   ],
 
   // --- Sanitization ---
@@ -319,14 +321,36 @@ Images display with `object-fit: contain` in detail view (full image visible) an
 
 ### Link extraction
 
-URLs matching `knownPlatforms` patterns are extracted from descriptions and rendered as action buttons. Add your own platforms:
+URLs matching `knownPlatforms` patterns are extracted from descriptions and rendered as action buttons. Built-in platforms:
+
+| Platform | Example label |
+|----------|--------------|
+| Eventbrite | RSVP on Eventbrite |
+| Google Forms | Fill Out Form |
+| Google Maps | View on Map |
+| Zoom | Join Zoom |
+| Google Meet | Join Google Meet |
+| Instagram | Follow @savebigbend on Instagram |
+| Facebook | savebigbend on Facebook |
+| X / Twitter | Follow @savebigbend on X |
+| Reddit | r/BigBend on Reddit |
+| YouTube | Watch on YouTube |
+| TikTok | @savebigbend on TikTok |
+| LinkedIn | View on LinkedIn |
+| Discord | Join Discord |
+| Luma | RSVP on Luma |
+| Mobilize | RSVP on Mobilize |
+| Action Network | Take Action |
+| GoFundMe | Donate on GoFundMe |
+
+Social platforms auto-detect handles from the URL path. Add your own with static `label` or dynamic `labelFn`:
 
 ```js
 OgCal.init({
   knownPlatforms: [
     ...OgCal.DEFAULTS?.knownPlatforms || [],
-    { pattern: /lu\.ma/i, label: 'RSVP on Luma' },
-    { pattern: /discord\.gg/i, label: 'Join Discord' },
+    { pattern: /your-org\.com/i, label: 'Visit Our Site' },
+    { pattern: /custom\.app/i, labelFn: (url) => `Open ${new URL(url).pathname}` },
   ],
 });
 ```
