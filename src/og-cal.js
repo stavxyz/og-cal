@@ -11,6 +11,7 @@ import { renderListView } from './views/list.js';
 import { renderDetailView } from './views/detail.js';
 import { isPast } from './util/dates.js';
 import { DEFAULT_PLATFORMS } from './util/links.js';
+import { renderHeader } from './ui/header.js';
 
 const DEFAULTS = {
   defaultView: 'month',
@@ -34,6 +35,8 @@ const DEFAULTS = {
   onViewChange: null,
   onError: null,
   onDataLoad: null,
+  showHeader: true,
+  subscribeUrl: null, // auto-generated from google.calendarId if not set
   renderEmpty: null,
   renderLoading: null,
   renderError: null,
@@ -51,6 +54,7 @@ const I18N_DEFAULTS = {
   noEventsThisDay: 'No events this day.',
   back: '\u2190 Back',
   moreEvents: '+{count} more',
+  subscribe: 'Subscribe',
 };
 
 const THEME_DEFAULTS = {
@@ -92,6 +96,8 @@ export function init(userConfig) {
   el.classList.add('ogcal');
 
   // Create layout
+  const headerContainer = document.createElement('div');
+  headerContainer.className = 'ogcal-header-container';
   const selectorContainer = document.createElement('div');
   selectorContainer.className = 'ogcal-selector-container';
   const viewContainer = document.createElement('div');
@@ -101,6 +107,7 @@ export function init(userConfig) {
   toggleContainer.className = 'ogcal-toggle-container';
 
   el.innerHTML = '';
+  el.appendChild(headerContainer);
   el.appendChild(selectorContainer);
   el.appendChild(viewContainer);
   el.appendChild(toggleContainer);
@@ -213,6 +220,9 @@ export function init(userConfig) {
       renderError(viewContainer, err.message, start, config);
       return;
     }
+
+    // Render header with calendar name/description + subscribe button
+    renderHeader(headerContainer, data.calendar, config);
 
     const initial = getInitialView(config.defaultView, config.views, config);
 
