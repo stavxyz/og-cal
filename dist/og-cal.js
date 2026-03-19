@@ -2355,16 +2355,18 @@ ${text}</tr>
     return data;
   }
   function enrichEvent(event, config) {
-    if (!event.description) return event;
-    let description = event.description;
+    let description = event.description || "";
     let image = event.image || null;
     let links = event.links && event.links.length > 0 ? event.links : [];
-    if (!image) {
+    if (!image && description) {
       const result = extractImage(description, config);
       image = result.image;
       description = result.description;
     }
-    if (links.length === 0) {
+    if (!image) {
+      image = getImageFromAttachments(event.attachments);
+    }
+    if (links.length === 0 && description) {
       const result = extractLinks(description, config);
       links = result.links;
       description = result.description;
@@ -2385,7 +2387,7 @@ ${text}</tr>
     const imageAttachment = attachments.find(
       (a) => a.mimeType && a.mimeType.startsWith("image/")
     );
-    return imageAttachment ? imageAttachment.fileUrl : null;
+    return imageAttachment ? imageAttachment.fileUrl || imageAttachment.url : null;
   }
   function transformGoogleEvents(googleData, config) {
     const events = (googleData.items || []).map((item) => {

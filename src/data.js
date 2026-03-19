@@ -42,21 +42,24 @@ export async function loadData(config) {
 }
 
 function enrichEvent(event, config) {
-  if (!event.description) return event;
-
-  let description = event.description;
+  let description = event.description || '';
   let image = event.image || null;
   let links = (event.links && event.links.length > 0) ? event.links : [];
 
   // Extract image from description if not already set
-  if (!image) {
+  if (!image && description) {
     const result = extractImage(description, config);
     image = result.image;
     description = result.description;
   }
 
+  // Fallback: check attachments for image
+  if (!image) {
+    image = getImageFromAttachments(event.attachments);
+  }
+
   // Extract links from description if not already populated
-  if (links.length === 0) {
+  if (links.length === 0 && description) {
     const result = extractLinks(description, config);
     links = result.links;
     description = result.description;
@@ -84,7 +87,7 @@ function getImageFromAttachments(attachments) {
   const imageAttachment = attachments.find(a =>
     a.mimeType && a.mimeType.startsWith('image/')
   );
-  return imageAttachment ? imageAttachment.fileUrl : null;
+  return imageAttachment ? (imageAttachment.fileUrl || imageAttachment.url) : null;
 }
 
 export function transformGoogleEvents(googleData, config) {
