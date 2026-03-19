@@ -1,5 +1,9 @@
 const VALID_VIEWS = ['month', 'week', 'day', 'grid', 'list'];
-const STORAGE_KEY = 'ogcal-view';
+
+function storageKey(config) {
+  const prefix = (config && config.storageKeyPrefix) || 'ogcal';
+  return `${prefix}-view`;
+}
 
 export function parseHash() {
   const hash = window.location.hash.slice(1); // remove #
@@ -23,12 +27,13 @@ export function parseHash() {
   return null;
 }
 
-export function getInitialView(defaultView, enabledViews) {
+export function getInitialView(defaultView, enabledViews, config) {
   // Priority: hash > localStorage > config default
   const fromHash = parseHash();
   if (fromHash) return fromHash;
 
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const key = storageKey(config);
+  const saved = localStorage.getItem(key);
   if (saved && enabledViews.includes(saved)) {
     return { view: saved };
   }
@@ -36,9 +41,10 @@ export function getInitialView(defaultView, enabledViews) {
   return { view: defaultView || 'month' };
 }
 
-export function setView(view) {
+export function setView(view, config) {
   window.location.hash = view;
-  localStorage.setItem(STORAGE_KEY, view);
+  const key = storageKey(config);
+  localStorage.setItem(key, view);
 }
 
 export function setEventDetail(eventId) {

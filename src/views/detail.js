@@ -2,20 +2,26 @@ import { formatDatetime, formatDate } from '../util/dates.js';
 import { renderDescription } from '../util/description.js';
 import { escapeHtml } from '../util/sanitize.js';
 
-export function renderDetailView(container, event, timezone, onBack) {
+export function renderDetailView(container, event, timezone, onBack, config) {
+  config = config || {};
+  const locale = config.locale;
+  const i18n = config.i18n || {};
+  const backLabel = i18n.back || '\u2190 Back';
+  const locationTemplate = config.locationLinkTemplate || 'https://maps.google.com/?q={location}';
+
   const detail = document.createElement('div');
   detail.className = 'ogcal-detail';
 
   const backBtn = document.createElement('button');
   backBtn.className = 'ogcal-detail-back';
-  backBtn.textContent = '← Back';
+  backBtn.textContent = backLabel;
   backBtn.addEventListener('click', onBack);
   detail.appendChild(backBtn);
 
   if (event.image) {
     const img = document.createElement('div');
     img.className = 'ogcal-detail-image';
-    img.innerHTML = `<img src="${event.image}" alt="" loading="lazy">`;
+    img.innerHTML = `<img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy">`;
     detail.appendChild(img);
   }
 
@@ -27,11 +33,11 @@ export function renderDetailView(container, event, timezone, onBack) {
   const meta = document.createElement('div');
   meta.className = 'ogcal-detail-meta';
   const dateStr = event.allDay
-    ? formatDate(event.start, timezone)
-    : formatDatetime(event.start, timezone);
+    ? formatDate(event.start, timezone, locale)
+    : formatDatetime(event.start, timezone, locale);
   meta.innerHTML = `<div class="ogcal-detail-date">${dateStr}</div>`;
   if (event.location) {
-    const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(event.location)}`;
+    const mapsUrl = locationTemplate.replace('{location}', encodeURIComponent(event.location));
     meta.innerHTML += `<div class="ogcal-detail-location"><a href="${mapsUrl}" target="_blank" rel="noopener">${escapeHtml(event.location)}</a></div>`;
   }
   detail.appendChild(meta);
@@ -39,7 +45,7 @@ export function renderDetailView(container, event, timezone, onBack) {
   if (event.description) {
     const desc = document.createElement('div');
     desc.className = 'ogcal-detail-description';
-    desc.innerHTML = renderDescription(event.description);
+    desc.innerHTML = renderDescription(event.description, config);
     detail.appendChild(desc);
   }
 

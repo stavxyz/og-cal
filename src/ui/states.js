@@ -1,4 +1,14 @@
-export function renderLoading(container) {
+export function renderLoading(container, config) {
+  if (config && config.renderLoading) {
+    const result = config.renderLoading();
+    if (typeof result === 'string') {
+      container.innerHTML = result;
+    } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+      container.innerHTML = '';
+      container.appendChild(result);
+    }
+    return;
+  }
   container.innerHTML = `
     <div class="ogcal-loading">
       <div class="ogcal-loading-pulse"></div>
@@ -7,14 +17,29 @@ export function renderLoading(container) {
     </div>`;
 }
 
-export function renderEmpty(container, hasPastEvents, onShowPast) {
+export function renderEmpty(container, hasPastEvents, onShowPast, config) {
+  const i18n = (config && config.i18n) || {};
+  const noUpcomingEvents = i18n.noUpcomingEvents || 'No upcoming events.';
+  const showPastEvents = i18n.showPastEvents || 'Show past events';
+
+  if (config && config.renderEmpty) {
+    const result = config.renderEmpty({ hasPastEvents });
+    if (typeof result === 'string') {
+      container.innerHTML = result;
+    } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+      container.innerHTML = '';
+      container.appendChild(result);
+    }
+    return;
+  }
+
   const pastLink = hasPastEvents
-    ? `<button class="ogcal-empty-past-link" onclick="this.dispatchEvent(new CustomEvent('ogcal:show-past', { bubbles: true }))">Show past events</button>`
+    ? `<button class="ogcal-empty-past-link" onclick="this.dispatchEvent(new CustomEvent('ogcal:show-past', { bubbles: true }))">${showPastEvents}</button>`
     : '';
   container.innerHTML = `
     <div class="ogcal-empty">
       <div class="ogcal-empty-icon">📅</div>
-      <p>No upcoming events.</p>
+      <p>${noUpcomingEvents}</p>
       ${pastLink}
     </div>`;
   if (hasPastEvents) {
@@ -22,11 +47,26 @@ export function renderEmpty(container, hasPastEvents, onShowPast) {
   }
 }
 
-export function renderError(container, message, onRetry) {
+export function renderError(container, message, onRetry, config) {
+  const i18n = (config && config.i18n) || {};
+  const couldNotLoad = i18n.couldNotLoad || 'Could not load events.';
+  const retry = i18n.retry || 'Retry';
+
+  if (config && config.renderError) {
+    const result = config.renderError({ message });
+    if (typeof result === 'string') {
+      container.innerHTML = result;
+    } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+      container.innerHTML = '';
+      container.appendChild(result);
+    }
+    return;
+  }
+
   container.innerHTML = `
     <div class="ogcal-error">
-      <p>Could not load events.</p>
-      <button class="ogcal-error-retry">Retry</button>
+      <p>${couldNotLoad}</p>
+      <button class="ogcal-error-retry">${retry}</button>
     </div>`;
   container.querySelector('.ogcal-error-retry')?.addEventListener('click', onRetry);
 }
