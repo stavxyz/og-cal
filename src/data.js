@@ -23,6 +23,11 @@ export async function loadData(config) {
     throw new Error('og-cal: No data source configured. Provide data, fetchUrl, or google config.');
   }
 
+  // Enrich events: extract images/links from descriptions for all data sources
+  if (data.events) {
+    data = { ...data, events: data.events.map(event => enrichEvent(event, config)) };
+  }
+
   // Apply eventTransform
   if (config.eventTransform && data.events) {
     data = { ...data, events: data.events.map(config.eventTransform) };
@@ -34,6 +39,33 @@ export async function loadData(config) {
   }
 
   return data;
+}
+
+function enrichEvent(event, config) {
+  if (!event.description) return event;
+
+  let description = event.description;
+  let image = event.image || null;
+  let links = (event.links && event.links.length > 0) ? event.links : [];
+
+  // Extract image from description if not already set
+  if (!image) {
+    const result = extractImage(description, config);
+    image = result.image;
+    description = result.description;
+  }
+
+  // Extract links from description if not already populated
+  if (links.length === 0) {
+    const result = extractLinks(description, config);
+    links = result.links;
+    description = result.description;
+  }
+
+  // Detect format if not set
+  const descriptionFormat = event.descriptionFormat || detectFormat(description);
+
+  return { ...event, description, descriptionFormat, image, links };
 }
 
 async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {

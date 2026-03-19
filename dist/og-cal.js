@@ -2343,6 +2343,9 @@ ${text}</tr>
     } else {
       throw new Error("og-cal: No data source configured. Provide data, fetchUrl, or google config.");
     }
+    if (data.events) {
+      data = { ...data, events: data.events.map((event) => enrichEvent(event, config)) };
+    }
     if (config.eventTransform && data.events) {
       data = { ...data, events: data.events.map(config.eventTransform) };
     }
@@ -2350,6 +2353,24 @@ ${text}</tr>
       data = { ...data, events: data.events.filter(config.eventFilter) };
     }
     return data;
+  }
+  function enrichEvent(event, config) {
+    if (!event.description) return event;
+    let description = event.description;
+    let image = event.image || null;
+    let links = event.links && event.links.length > 0 ? event.links : [];
+    if (!image) {
+      const result = extractImage(description, config);
+      image = result.image;
+      description = result.description;
+    }
+    if (links.length === 0) {
+      const result = extractLinks(description, config);
+      links = result.links;
+      description = result.description;
+    }
+    const descriptionFormat = event.descriptionFormat || detectFormat(description);
+    return { ...event, description, descriptionFormat, image, links };
   }
   async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
