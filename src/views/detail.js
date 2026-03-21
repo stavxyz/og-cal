@@ -11,6 +11,8 @@ function renderGallery(images, altText) {
   imgEl.src = images[0];
   imgEl.alt = altText;
   imgEl.loading = 'lazy';
+  // Hide the entire gallery column if the image fails to load
+  imgEl.onerror = () => { gallery.closest('.ogcal-detail-image')?.remove(); };
   gallery.appendChild(imgEl);
 
   if (images.length <= 1) return gallery;

@@ -2419,15 +2419,15 @@ ${text}</tr>
     const data = await res.json();
     return transformGoogleEvents(data, config);
   }
-  function isDirectImageUrl(url) {
-    if (!url) return false;
-    if (/drive\.google\.com/i.test(url)) return false;
-    if (/docs\.google\.com/i.test(url)) return false;
-    return true;
+  function normalizeImageUrl(url) {
+    if (!url) return null;
+    const driveMatch = url.match(/drive\.google\.com\/(?:open\?id=|file\/d\/)([a-zA-Z0-9_-]+)/);
+    if (driveMatch) return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    return url;
   }
   function getImagesFromAttachments(attachments) {
     if (!attachments) return [];
-    return attachments.filter((a) => a.mimeType && a.mimeType.startsWith("image/")).map((a) => a.fileUrl || a.url).filter((url) => url && isDirectImageUrl(url));
+    return attachments.filter((a) => a.mimeType && a.mimeType.startsWith("image/")).map((a) => normalizeImageUrl(a.fileUrl || a.url)).filter(Boolean);
   }
   function transformGoogleEvents(googleData, config) {
     const events = (googleData.items || []).map((item) => {
@@ -2992,7 +2992,7 @@ ${text}</tr>
       });
       const dateStr = formatDateShort(event.start, timezone, locale);
       const timeStr = event.allDay ? "" : ` \xB7 ${formatTime(event.start, timezone, locale)}`;
-      const imageHtml = event.image ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy"></div>` : "";
+      const imageHtml = event.image ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : "";
       card.innerHTML = `
       ${imageHtml}
       <div class="ogcal-grid-body">
@@ -3064,6 +3064,9 @@ ${text}</tr>
     imgEl.src = images[0];
     imgEl.alt = altText;
     imgEl.loading = "lazy";
+    imgEl.onerror = () => {
+      gallery.closest(".ogcal-detail-image")?.remove();
+    };
     gallery.appendChild(imgEl);
     if (images.length <= 1) return gallery;
     let current = 0;

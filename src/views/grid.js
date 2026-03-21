@@ -36,8 +36,9 @@ export function renderGridView(container, events, timezone, config) {
 
     const dateStr = formatDateShort(event.start, timezone, locale);
     const timeStr = event.allDay ? '' : ` · ${formatTime(event.start, timezone, locale)}`;
+    // onerror hides the image container if the URL fails to load (e.g. unshared Drive files)
     const imageHtml = event.image
-      ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy"></div>`
+      ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
       : '';
 
     card.innerHTML = `
