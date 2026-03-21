@@ -99,12 +99,21 @@ async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, conf
   return transformGoogleEvents(data, config);
 }
 
+// Google Drive URLs (drive.google.com/open?id=...) can't be used as <img src> —
+// they require auth redirects. Only use URLs that point directly to image files.
+function isDirectImageUrl(url) {
+  if (!url) return false;
+  if (/drive\.google\.com/i.test(url)) return false;
+  if (/docs\.google\.com/i.test(url)) return false;
+  return true;
+}
+
 function getImagesFromAttachments(attachments) {
   if (!attachments) return [];
   return attachments
     .filter(a => a.mimeType && a.mimeType.startsWith('image/'))
     .map(a => a.fileUrl || a.url)
-    .filter(Boolean);
+    .filter(url => url && isDirectImageUrl(url));
 }
 
 export function transformGoogleEvents(googleData, config) {

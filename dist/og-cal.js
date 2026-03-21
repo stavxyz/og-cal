@@ -2419,9 +2419,15 @@ ${text}</tr>
     const data = await res.json();
     return transformGoogleEvents(data, config);
   }
+  function isDirectImageUrl(url) {
+    if (!url) return false;
+    if (/drive\.google\.com/i.test(url)) return false;
+    if (/docs\.google\.com/i.test(url)) return false;
+    return true;
+  }
   function getImagesFromAttachments(attachments) {
     if (!attachments) return [];
-    return attachments.filter((a) => a.mimeType && a.mimeType.startsWith("image/")).map((a) => a.fileUrl || a.url).filter(Boolean);
+    return attachments.filter((a) => a.mimeType && a.mimeType.startsWith("image/")).map((a) => a.fileUrl || a.url).filter((url) => url && isDirectImageUrl(url));
   }
   function transformGoogleEvents(googleData, config) {
     const events = (googleData.items || []).map((item) => {
