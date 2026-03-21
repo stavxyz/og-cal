@@ -2986,7 +2986,7 @@ ${text}</tr>
       });
       const dateStr = formatDateShort(event.start, timezone, locale);
       const timeStr = event.allDay ? "" : ` \xB7 ${formatTime(event.start, timezone, locale)}`;
-      const imageHtml = event.image ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy"></div>` : `<div class="ogcal-grid-image ogcal-grid-image--placeholder"></div>`;
+      const imageHtml = event.image ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy"></div>` : "";
       card.innerHTML = `
       ${imageHtml}
       <div class="ogcal-grid-body">

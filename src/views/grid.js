@@ -38,7 +38,7 @@ export function renderGridView(container, events, timezone, config) {
     const timeStr = event.allDay ? '' : ` · ${formatTime(event.start, timezone, locale)}`;
     const imageHtml = event.image
       ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy"></div>`
-      : `<div class="ogcal-grid-image ogcal-grid-image--placeholder"></div>`;
+      : '';
 
     card.innerHTML = `
       ${imageHtml}
