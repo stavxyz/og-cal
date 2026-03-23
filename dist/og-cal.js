@@ -95,9 +95,13 @@ var OgCal = (() => {
   // src/util/links.js
   function handleAt(url) {
     try {
-      const path = new URL(url).pathname.replace(/\/+$/, "");
-      const handle = path.split("/").filter(Boolean).pop();
-      return handle && !handle.includes(".") ? handle : null;
+      const segments = new URL(url).pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+      if (segments.length === 0) return null;
+      if (segments.length === 2 && (segments[0] === "r" || segments[0] === "u")) {
+        return `${segments[0]}/${segments[1]}`;
+      }
+      if (segments.length === 1 && !segments[0].includes(".")) return segments[0].replace(/^@/, "");
+      return null;
     } catch {
       return null;
     }
@@ -122,7 +126,7 @@ var OgCal = (() => {
     } },
     { pattern: /reddit\.com/i, labelFn: (url) => {
       const h = handleAt(url);
-      return h ? `r/${h} on Reddit` : "View on Reddit";
+      return h ? `${h} on Reddit` : "View on Reddit";
     } },
     { pattern: /youtube\.com|youtu\.be/i, label: "Watch on YouTube" },
     { pattern: /tiktok\.com/i, labelFn: (url) => {
