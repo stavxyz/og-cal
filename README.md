@@ -233,7 +233,7 @@ URLs in event descriptions matching known platforms are extracted and rendered a
 | GoFundMe | Donate on GoFundMe |
 | Partiful | RSVP on Partiful |
 
-Social platforms auto-detect handles from the URL path. Add your own via `knownPlatforms` config.
+Social platforms auto-detect handles from profile URLs (e.g. `instagram.com/savebigbend`). Links to individual posts, reels, or status pages get a generic label instead (e.g. "View on Instagram"). Facebook groups and Reddit communities (`/r/`, `/u/`) are recognized as profile-like destinations. Add your own platforms via `knownPlatforms` config.
 
 ## Event Images
 
