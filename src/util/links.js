@@ -1,10 +1,23 @@
 import { cleanupHtml } from './sanitize.js';
 
+// Extract a social-media handle/name from a URL.
+// Returns null for non-profile URLs (posts, reels, status pages, etc.)
+// so the caller falls back to a generic "View on …" label.
 function handleAt(url) {
   try {
-    const path = new URL(url).pathname.replace(/\/+$/, '');
-    const handle = path.split('/').filter(Boolean).pop();
-    return handle && !handle.includes('.') ? handle : null;
+    const segments = new URL(url).pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    if (segments.length === 0) return null;
+
+    // Reddit: /r/subreddit or /u/username (exactly 2 segments starting with r or u)
+    if (segments.length === 2 && (segments[0] === 'r' || segments[0] === 'u')) {
+      return `${segments[0]}/${segments[1]}`;
+    }
+
+    // Other platforms: single-segment path = profile handle (no dots — not a file)
+    // Strip leading @ (TikTok uses /@handle in the path)
+    if (segments.length === 1 && !segments[0].includes('.')) return segments[0].replace(/^@/, '');
+
+    return null;
   } catch { return null; }
 }
 
@@ -17,7 +30,7 @@ export const DEFAULT_PLATFORMS = [
   { pattern: /instagram\.com/i, labelFn: (url) => { const h = handleAt(url); return h ? `Follow @${h} on Instagram` : 'View on Instagram'; } },
   { pattern: /facebook\.com|fb\.com/i, labelFn: (url) => { const h = handleAt(url); return h ? `${h} on Facebook` : 'View on Facebook'; } },
   { pattern: /(?:twitter\.com|x\.com)/i, labelFn: (url) => { const h = handleAt(url); return h ? `Follow @${h} on X` : 'View on X'; } },
-  { pattern: /reddit\.com/i, labelFn: (url) => { const h = handleAt(url); return h ? `r/${h} on Reddit` : 'View on Reddit'; } },
+  { pattern: /reddit\.com/i, labelFn: (url) => { const h = handleAt(url); return h ? `${h} on Reddit` : 'View on Reddit'; } },
   { pattern: /youtube\.com|youtu\.be/i, label: 'Watch on YouTube' },
   { pattern: /tiktok\.com/i, labelFn: (url) => { const h = handleAt(url); return h ? `@${h} on TikTok` : 'View on TikTok'; } },
   { pattern: /linkedin\.com/i, label: 'View on LinkedIn' },
