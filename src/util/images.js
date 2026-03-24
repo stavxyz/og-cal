@@ -1,10 +1,10 @@
-import { cleanupHtml } from './sanitize.js';
+import { cleanupHtml, stripUrl } from './sanitize.js';
 
 const DEFAULT_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
 // Core pattern for extracting a Google Drive file ID from various URL formats:
 //   /file/d/ID/..., /open?id=ID, /uc?id=ID, /uc?export=view&id=ID
-const DRIVE_ID_PATTERN = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=)([a-zA-Z0-9_-]+)/;
+export const DRIVE_ID_PATTERN = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=)([a-zA-Z0-9_-]+)/;
 
 // Full-URL version with protocol and trailing chars, for scanning descriptions.
 const DRIVE_URL_PATTERN = new RegExp(
@@ -68,14 +68,6 @@ function buildImagePattern(extensions) {
   const ext = extensions.join('|');
   // Match image URLs whether bare, inside href="...", or inside >...</a> tags
   return new RegExp(`(https?://[^\\s<>"]+\\.(?:${ext})(?:\\?[^\\s<>"]*)?)`, 'gi');
-}
-
-function stripUrl(html, url) {
-  const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Remove <a> tags wrapping this URL, then any remaining bare occurrences
-  html = html.replace(new RegExp(`<a[^>]*>${escaped}</a>`, 'gi'), '');
-  html = html.replace(new RegExp(escaped, 'g'), '');
-  return html;
 }
 
 export { getPathExtension, NON_IMAGE_EXTENSIONS };
