@@ -112,6 +112,21 @@ export function renderDetailView(container, event, timezone, onBack, config) {
     content.appendChild(desc);
   }
 
+  if (event.attachments && event.attachments.length > 0) {
+    const attachDiv = document.createElement('div');
+    attachDiv.className = 'ogcal-detail-attachments';
+    for (const att of event.attachments) {
+      const a = document.createElement('a');
+      a.className = 'ogcal-detail-attachment';
+      a.href = att.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = att.label;
+      attachDiv.appendChild(a);
+    }
+    content.appendChild(attachDiv);
+  }
+
   if (event.links && event.links.length > 0) {
     const linksDiv = document.createElement('div');
     linksDiv.className = 'ogcal-detail-links';
