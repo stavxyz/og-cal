@@ -5,6 +5,13 @@ export function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ESC_MAP[c]);
 }
 
+export function stripUrl(html, url) {
+  const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  html = html.replace(new RegExp(`<a[^>]*>${escaped}</a>`, 'gi'), '');
+  html = html.replace(new RegExp(escaped, 'g'), '');
+  return html;
+}
+
 // Clean up description HTML after extracting URLs.
 // Collapses orphaned <br> runs, removes leading/trailing <br>,
 // and normalizes excessive newlines.
