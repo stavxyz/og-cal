@@ -11,14 +11,34 @@ const DRIVE_URL_PATTERN = new RegExp(
   `https?:\\/\\/${DRIVE_ID_PATTERN.source}[^\\s<>"]*`, 'gi'
 );
 
+// Dropbox share URL patterns: /scl/fi/ (current) and /s/ (legacy)
+const DROPBOX_PATTERN = /(?:www\.)?dropbox\.com\/(?:scl\/fi|s)\//;
+
+// dl.dropboxusercontent.com is already direct-serve
+const DROPBOX_DIRECT_PATTERN = /dl\.dropboxusercontent\.com/;
+
 /**
  * Convert a Google Drive URL to a direct-servable image URL via
- * lh3.googleusercontent.com.  Non-Drive URLs are returned as-is.
+ * lh3.googleusercontent.com.  Dropbox share URLs are normalized to raw=1.
+ * Non-Drive, non-Dropbox URLs are returned as-is.
  */
 export function normalizeImageUrl(url) {
   if (!url) return null;
+
+  // Google Drive → lh3.googleusercontent.com
   const m = url.match(DRIVE_ID_PATTERN);
   if (m) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+
+  // Dropbox direct URLs — already servable
+  if (DROPBOX_DIRECT_PATTERN.test(url)) return url;
+
+  // Dropbox share URLs — normalize to raw=1
+  if (DROPBOX_PATTERN.test(url)) {
+    if (url.includes('dl=0')) return url.replace('dl=0', 'raw=1');
+    if (url.includes('?')) return url + '&raw=1';
+    return url + '?raw=1';
+  }
+
   return url;
 }
 

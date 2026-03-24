@@ -63,6 +63,43 @@ describe('normalizeImageUrl', () => {
   it('returns null for empty string', () => {
     assert.strictEqual(normalizeImageUrl(''), null);
   });
+
+  it('normalizes Dropbox scl/fi URL with dl=0 to raw=1', () => {
+    const url = 'https://www.dropbox.com/scl/fi/abc123hash/photo.jpg?rlkey=xyz789&dl=0';
+    assert.strictEqual(
+      normalizeImageUrl(url),
+      'https://www.dropbox.com/scl/fi/abc123hash/photo.jpg?rlkey=xyz789&raw=1'
+    );
+  });
+
+  it('normalizes Dropbox scl/fi URL without dl param — appends &raw=1', () => {
+    const url = 'https://www.dropbox.com/scl/fi/abc123hash/photo.jpg?rlkey=xyz789';
+    assert.strictEqual(
+      normalizeImageUrl(url),
+      'https://www.dropbox.com/scl/fi/abc123hash/photo.jpg?rlkey=xyz789&raw=1'
+    );
+  });
+
+  it('normalizes legacy Dropbox /s/ URL with dl=0', () => {
+    const url = 'https://www.dropbox.com/s/abc123/flyer.png?dl=0';
+    assert.strictEqual(
+      normalizeImageUrl(url),
+      'https://www.dropbox.com/s/abc123/flyer.png?raw=1'
+    );
+  });
+
+  it('normalizes legacy Dropbox /s/ URL without query string — appends ?raw=1', () => {
+    const url = 'https://www.dropbox.com/s/abc123/flyer.png';
+    assert.strictEqual(
+      normalizeImageUrl(url),
+      'https://www.dropbox.com/s/abc123/flyer.png?raw=1'
+    );
+  });
+
+  it('passes through dl.dropboxusercontent.com URLs unchanged', () => {
+    const url = 'https://dl.dropboxusercontent.com/s/abc123/photo.jpg';
+    assert.strictEqual(normalizeImageUrl(url), url);
+  });
 });
 
 describe('extractImage — Drive URLs', () => {
