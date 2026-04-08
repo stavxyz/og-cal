@@ -114,6 +114,25 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   }
   content.appendChild(meta);
 
+  // Render tags (scalar tags and key-value text tags)
+  const scalarAndTextTags = (event.tags || []).filter(t => {
+    if (t.key === 'tag') return true; // scalar tag
+    if (t.value && !t.value.startsWith('http')) return true; // key-value text
+    return false;
+  });
+
+  if (scalarAndTextTags.length > 0) {
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'ogcal-detail-tags';
+    for (const tag of scalarAndTextTags) {
+      const span = document.createElement('span');
+      span.className = 'ogcal-detail-tag';
+      span.textContent = tag.key === 'tag' ? tag.value : `${tag.key}: ${tag.value}`;
+      tagsDiv.appendChild(span);
+    }
+    content.appendChild(tagsDiv);
+  }
+
   if (event.description) {
     const desc = document.createElement('div');
     desc.className = 'ogcal-detail-description';
@@ -136,10 +155,14 @@ export function renderDetailView(container, event, timezone, onBack, config) {
     content.appendChild(attachDiv);
   }
 
-  if (event.links && event.links.length > 0) {
+  // Collect key-value URL tags to render alongside links
+  const urlTags = (event.tags || []).filter(t => t.key !== 'tag' && t.value && t.value.startsWith('http'));
+  const allLinks = [...(event.links || []), ...urlTags.map(t => ({ label: t.key, url: t.value }))];
+
+  if (allLinks.length > 0) {
     const linksDiv = document.createElement('div');
     linksDiv.className = 'ogcal-detail-links';
-    for (const link of event.links) {
+    for (const link of allLinks) {
       const a = document.createElement('a');
       a.className = 'ogcal-detail-link';
       a.href = link.url;
