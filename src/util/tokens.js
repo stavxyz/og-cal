@@ -1,4 +1,7 @@
-const TRACKING_PARAMS = new Set(['fbclid', 'si']);
+const TRACKING_PARAMS = new Set([
+  'fbclid',  // Facebook click ID
+  'si',      // Spotify session ID (share tracking)
+]);
 const TRACKING_PREFIX = 'utm_';
 
 export function normalizeUrl(url) {
