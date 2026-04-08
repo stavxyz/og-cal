@@ -3,6 +3,7 @@ import {
   DRIVE_ID_PATTERN, getPathExtension, NON_IMAGE_EXTENSIONS,
   DROPBOX_PATTERN, DROPBOX_DIRECT_PATTERN, DEFAULT_IMAGE_EXTENSIONS,
 } from './images.js';
+import { normalizeUrl } from './tokens.js';
 
 const IMAGE_EXTENSIONS = new Set(DEFAULT_IMAGE_EXTENSIONS);
 
@@ -58,11 +59,12 @@ function attachmentCanonicalId(url) {
   const driveMatch = url.match(DRIVE_ID_PATTERN);
   if (driveMatch) return `attachment:drive:${driveMatch[1]}`;
 
+  const normalized = normalizeUrl(url);
   try {
-    const u = new URL(url);
-    return `attachment:${u.hostname.replace(/^www\./, '')}${u.pathname}`;
+    const u = new URL(normalized);
+    return `attachment:${u.hostname}${u.pathname}`;
   } catch {
-    return `attachment:${url}`;
+    return `attachment:${normalized}`;
   }
 }
 

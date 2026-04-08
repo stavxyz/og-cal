@@ -157,7 +157,8 @@ export function renderDetailView(container, event, timezone, onBack, config) {
 
   // Collect key-value URL tags to render alongside links
   const urlTags = (event.tags || []).filter(t => t.key !== 'tag' && t.value && t.value.startsWith('http'));
-  const allLinks = [...(event.links || []), ...urlTags.map(t => ({ label: t.key, url: t.value }))];
+  const titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const allLinks = [...(event.links || []), ...urlTags.map(t => ({ label: titleCase(t.key), url: t.value }))];
 
   if (allLinks.length > 0) {
     const linksDiv = document.createElement('div');
