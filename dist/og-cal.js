@@ -2970,7 +2970,10 @@ ${text}</tr>
     }
     const tagTokens = tokenSet.ofType("tag");
     const existingTags = event.tags || [];
-    const tags = tagTokens.length > 0 ? tagTokens.map((t) => ({ key: t.metadata.key, value: t.metadata.value })) : existingTags;
+    const tags = [
+      ...existingTags,
+      ...tagTokens.map((t) => ({ key: t.metadata.key, value: t.metadata.value }))
+    ];
     const descriptionFormat = event.descriptionFormat || detectFormat(description);
     const { _imageAttachments, ...rest } = event;
     return { ...rest, description, descriptionFormat, image, images, links, attachments, tags };
