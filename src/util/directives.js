@@ -106,6 +106,7 @@ function parseDirective(body) {
 
 export function extractDirectives(description) {
   if (!description) return { tokens: [], description };
+  description = description.replace(/&amp;/g, '&');
 
   const tokens = [];
   const seen = new Set();

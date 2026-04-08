@@ -1,12 +1,10 @@
-import { cleanupHtml, stripUrl } from './sanitize.js';
-import { DRIVE_ID_PATTERN, getPathExtension, NON_IMAGE_EXTENSIONS } from './images.js';
+import { cleanupHtml, stripUrl, URL_PATTERN } from './sanitize.js';
+import {
+  DRIVE_ID_PATTERN, getPathExtension, NON_IMAGE_EXTENSIONS,
+  DROPBOX_PATTERN, DROPBOX_DIRECT_PATTERN, DEFAULT_IMAGE_EXTENSIONS,
+} from './images.js';
 
-const DROPBOX_PATTERN = /(?:www\.)?dropbox\.com\/(?:scl\/fi|s)\//;
-const DROPBOX_DIRECT_PATTERN = /dl\.dropboxusercontent\.com/;
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
-
-const URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
+const IMAGE_EXTENSIONS = new Set(DEFAULT_IMAGE_EXTENSIONS);
 
 
 // Map extensions to {label, type} — grouped by category
