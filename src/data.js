@@ -129,12 +129,13 @@ function enrichEvent(event, config) {
     attachments = [...attachments, ...tokenAttachments];
   }
 
-  // Build tags from tag tokens, preserving any existing tags
+  // Build tags from tag tokens, merging with any existing tags
   const tagTokens = tokenSet.ofType('tag');
   const existingTags = event.tags || [];
-  const tags = tagTokens.length > 0
-    ? tagTokens.map(t => ({ key: t.metadata.key, value: t.metadata.value }))
-    : existingTags;
+  const tags = [
+    ...existingTags,
+    ...tagTokens.map(t => ({ key: t.metadata.key, value: t.metadata.value })),
+  ];
 
   // Detect format if not set
   const descriptionFormat = event.descriptionFormat || detectFormat(description);
