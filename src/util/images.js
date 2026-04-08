@@ -1,4 +1,5 @@
 import { cleanupHtml, stripUrl } from './sanitize.js';
+import { normalizeUrl } from './tokens.js';
 
 export const DEFAULT_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
@@ -88,12 +89,13 @@ function imageCanonicalId(originalUrl) {
   const dropboxMatch = originalUrl.match(/dropbox\.com\/(?:scl\/fi|s)\/([^?]+)/);
   if (dropboxMatch) return `image:dropbox:${dropboxMatch[1]}`;
 
-  // General: host + path
+  // General: normalize to strip www, tracking params, etc.
+  const normalized = normalizeUrl(originalUrl);
   try {
-    const u = new URL(originalUrl);
-    return `image:${u.hostname.replace(/^www\./, '')}${u.pathname}`;
+    const u = new URL(normalized);
+    return `image:${u.hostname}${u.pathname}`;
   } catch {
-    return `image:${originalUrl}`;
+    return `image:${normalized}`;
   }
 }
 

@@ -31,6 +31,14 @@ export class TokenSet {
     this._map = new Map();
   }
 
+  get size() {
+    return this._map.size;
+  }
+
+  has(canonicalId) {
+    return this._map.has(canonicalId);
+  }
+
   add(token) {
     if (!this._map.has(token.canonicalId)) {
       this._map.set(token.canonicalId, token);
