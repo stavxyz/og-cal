@@ -1,12 +1,19 @@
 const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
+// Shared URL-matching pattern used by link, image, and attachment extractors
+export const URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
+
 export function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/[&<>"']/g, c => ESC_MAP[c]);
 }
 
+export function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function stripUrl(html, url) {
-  const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escaped = escapeRegex(url);
   html = html.replace(new RegExp(`<a[^>]*>${escaped}</a>`, 'gi'), '');
   html = html.replace(new RegExp(escaped, 'g'), '');
   return html;

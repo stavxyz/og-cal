@@ -1,6 +1,6 @@
 import { cleanupHtml, stripUrl } from './sanitize.js';
 
-const DEFAULT_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+export const DEFAULT_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
 
 // Core pattern for extracting a Google Drive file ID from various URL formats:
@@ -13,10 +13,10 @@ const DRIVE_URL_PATTERN = new RegExp(
 );
 
 // Dropbox share URL patterns: /scl/fi/ (current) and /s/ (legacy)
-const DROPBOX_PATTERN = /(?:www\.)?dropbox\.com\/(?:scl\/fi|s)\//;
+export const DROPBOX_PATTERN = /(?:www\.)?dropbox\.com\/(?:scl\/fi|s)\//;
 
 // dl.dropboxusercontent.com is already direct-serve
-const DROPBOX_DIRECT_PATTERN = /dl\.dropboxusercontent\.com/;
+export const DROPBOX_DIRECT_PATTERN = /dl\.dropboxusercontent\.com/;
 
 // Known non-image extensions — these are left for attachment extraction
 const NON_IMAGE_EXTENSIONS = new Set([

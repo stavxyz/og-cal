@@ -1,4 +1,4 @@
-import { cleanupHtml } from './sanitize.js';
+import { cleanupHtml, stripUrl, URL_PATTERN } from './sanitize.js';
 import { normalizeUrl } from './tokens.js';
 
 // Two-segment path prefixes that represent profile-like destinations,
@@ -228,8 +228,6 @@ export const DEFAULT_PLATFORMS = [
   },
 ];
 
-const URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
-
 export function extractLinks(description, config) {
   if (!description) return { links: [], description };
   description = description.replace(/&amp;/g, '&');
@@ -238,6 +236,7 @@ export function extractLinks(description, config) {
   let cleaned = description;
   const seen = new Set();
 
+  URL_PATTERN.lastIndex = 0;
   const urls = description.match(URL_PATTERN) || [];
   for (const url of urls) {
     if (seen.has(url)) continue;
@@ -246,10 +245,7 @@ export function extractLinks(description, config) {
         seen.add(url);
         const label = platform.labelFn ? platform.labelFn(url) : platform.label;
         links.push({ label, url });
-        // Remove <a> tag wrapping the URL if present, then the bare URL
-        const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        cleaned = cleaned.replace(new RegExp(`<a[^>]*>${escapedUrl}</a>`, 'gi'), '');
-        cleaned = cleaned.replace(url, '');
+        cleaned = stripUrl(cleaned, url);
         break;
       }
     }
@@ -268,6 +264,7 @@ export function extractLinkTokens(description, config) {
   let cleaned = description;
   const seen = new Set();
 
+  URL_PATTERN.lastIndex = 0;
   const urls = description.match(URL_PATTERN) || [];
   for (const url of urls) {
     const normalized = normalizeUrl(url);
@@ -275,10 +272,7 @@ export function extractLinkTokens(description, config) {
       if (platform.pattern.test(url)) {
         const canonicalId = platform.canonicalize ? platform.canonicalize(normalized) : null;
         if (canonicalId && seen.has(canonicalId)) {
-          // Duplicate — still strip from description
-          const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          cleaned = cleaned.replace(new RegExp(`<a[^>]*>${escapedUrl}</a>`, 'gi'), '');
-          cleaned = cleaned.replace(url, '');
+          cleaned = stripUrl(cleaned, url);
           break;
         }
         if (canonicalId) seen.add(canonicalId);
@@ -291,9 +285,7 @@ export function extractLinkTokens(description, config) {
           label,
           metadata: {},
         });
-        const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        cleaned = cleaned.replace(new RegExp(`<a[^>]*>${escapedUrl}</a>`, 'gi'), '');
-        cleaned = cleaned.replace(url, '');
+        cleaned = stripUrl(cleaned, url);
         break;
       }
     }
