@@ -9,14 +9,14 @@ export function renderWeekView(container, events, timezone, currentDate, config)
 
   events = filterHidden(events);
 
-  const week = createElement('div', 'ogcal-week');
+  const week = createElement('div', 'already-week');
 
   // Navigation
-  const nav = createElement('div', 'ogcal-week-nav');
+  const nav = createElement('div', 'already-week-nav');
   const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
   const endLabel = formatDateShort(dates[6].toISOString(), timezone, locale);
 
-  const prevBtn = createElement('button', 'ogcal-week-prev', { 'aria-label': 'Previous week' });
+  const prevBtn = createElement('button', 'already-week-prev', { 'aria-label': 'Previous week' });
   prevBtn.textContent = '\u2039';
   prevBtn.addEventListener('click', () => {
     const prev = new Date(currentDate);
@@ -25,11 +25,11 @@ export function renderWeekView(container, events, timezone, currentDate, config)
   });
   nav.appendChild(prevBtn);
 
-  const title = createElement('span', 'ogcal-week-title');
+  const title = createElement('span', 'already-week-title');
   title.textContent = `${startLabel} \u2013 ${endLabel}`;
   nav.appendChild(title);
 
-  const nextBtn = createElement('button', 'ogcal-week-next', { 'aria-label': 'Next week' });
+  const nextBtn = createElement('button', 'already-week-next', { 'aria-label': 'Next week' });
   nextBtn.textContent = '\u203a';
   nextBtn.addEventListener('click', () => {
     const next = new Date(currentDate);
@@ -40,18 +40,18 @@ export function renderWeekView(container, events, timezone, currentDate, config)
 
   week.appendChild(nav);
 
-  const columns = createElement('div', 'ogcal-week-columns');
+  const columns = createElement('div', 'already-week-columns');
   const dayFmt = new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' });
 
   for (const date of dates) {
-    const col = createElement('div', 'ogcal-week-col' + (isToday(date) ? ' ogcal-week-col--today' : ''));
+    const col = createElement('div', 'already-week-col' + (isToday(date) ? ' already-week-col--today' : ''));
 
-    const header = createElement('div', 'ogcal-week-col-header');
+    const header = createElement('div', 'already-week-col-header');
     const dayName = dayFmt.format(date);
-    const dayNameEl = createElement('span', 'ogcal-week-dayname');
+    const dayNameEl = createElement('span', 'already-week-dayname');
     dayNameEl.textContent = dayName;
     header.appendChild(dayNameEl);
-    const dayNumEl = createElement('span', 'ogcal-week-daynum');
+    const dayNumEl = createElement('span', 'already-week-daynum');
     dayNumEl.textContent = date.getDate();
     header.appendChild(dayNumEl);
     col.appendChild(header);
@@ -62,7 +62,7 @@ export function renderWeekView(container, events, timezone, currentDate, config)
     }));
 
     for (const event of dayEvents) {
-      const block = createElement('div', 'ogcal-week-event' + (event.featured ? ' ogcal-week-event--featured' : ''));
+      const block = createElement('div', 'already-week-event' + (event.featured ? ' already-week-event--featured' : ''));
       block.textContent = event.title;
       bindEventClick(block, event, 'week', config);
       col.appendChild(block);

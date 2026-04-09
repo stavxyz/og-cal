@@ -10,28 +10,28 @@ export function renderListView(container, events, timezone, config) {
   events = filterHidden(events);
   events = sortFeaturedByDate(events, timezone, locale);
 
-  const list = createElement('div', 'ogcal-list');
+  const list = createElement('div', 'already-list');
 
   for (const event of events) {
     const item = createElement('div');
-    applyEventClasses(item, event, 'ogcal-list-item');
+    applyEventClasses(item, event, 'already-list-item');
     bindEventClick(item, event, 'list', config);
 
-    const dateCol = createElement('div', 'ogcal-list-date');
-    const dateDay = createElement('div', 'ogcal-list-date-day');
+    const dateCol = createElement('div', 'already-list-date');
+    const dateDay = createElement('div', 'already-list-date-day');
     dateDay.textContent = formatDate(event.start, timezone, locale);
     dateCol.appendChild(dateDay);
-    const dateTime = createElement('div', 'ogcal-list-date-time');
+    const dateTime = createElement('div', 'already-list-date-time');
     dateTime.textContent = event.allDay ? allDayLabel : formatTime(event.start, timezone, locale);
     dateCol.appendChild(dateTime);
     item.appendChild(dateCol);
 
-    const info = createElement('div', 'ogcal-list-info');
-    const title = createElement('div', 'ogcal-list-title');
+    const info = createElement('div', 'already-list-info');
+    const title = createElement('div', 'already-list-title');
     title.textContent = event.title;
     info.appendChild(title);
     if (event.location) {
-      const loc = createElement('div', 'ogcal-list-location');
+      const loc = createElement('div', 'already-list-location');
       loc.textContent = event.location;
       info.appendChild(loc);
     }
