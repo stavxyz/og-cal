@@ -21,8 +21,8 @@ After enrichment, each event has these fields:
 | `links` | `object[]` | Extracted platform links: `[{ label, url }]` |
 | `attachments` | `object[]` | File attachments: `[{ label, url, type }]` |
 | `tags` | `object[]` | Tags from directives: `[{ key, value }]` |
-| `featured` | `boolean` | `true` if `#ogcal:featured` directive is present |
-| `hidden` | `boolean` | `true` if `#ogcal:hidden` directive is present |
+| `featured` | `boolean` | `true` if `#already:featured` directive is present |
+| `hidden` | `boolean` | `true` if `#already:hidden` directive is present |
 
 ## Data Pipeline
 
@@ -51,7 +51,7 @@ Passed to view renderer
 
 The `enrichEvent()` function processes each event's description in this order:
 
-1. **Directives** — `#ogcal:` and `#showcal:` tokens are extracted and removed from the description. Platform directives become links, image directives become images, tag directives become tags, and `featured`/`hidden` flags are set.
+1. **Directives** — `#already:` tokens are extracted and removed from the description. Platform directives become links, image directives become images, tag directives become tags, and `featured`/`hidden` flags are set.
 
 2. **Images** — URLs ending in image extensions (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`) and Google Drive/Dropbox links are extracted from the description and removed from the rendered text. Image attachments from Google Calendar with `image/*` MIME types are also included.
 
@@ -59,7 +59,7 @@ The `enrichEvent()` function processes each event's description in this order:
 
 4. **File attachments** — URLs ending in file extensions (`.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.csv`, `.ppt`, `.pptx`, `.zip`, `.txt`) are extracted and removed. Each becomes a `{ label, url, type }` entry in `event.attachments`.
 
-Tokens are deduplicated — a directive and a URL pointing to the same resource produce one entry (e.g., `#ogcal:instagram:foo` and `https://instagram.com/foo` are merged).
+Tokens are deduplicated — a directive and a URL pointing to the same resource produce one entry (e.g., `#already:instagram:foo` and `https://instagram.com/foo` are merged).
 
 ## Description Rendering
 
@@ -83,7 +83,7 @@ When using `config.data`, provide this structure:
     {
       id: 'unique-id',
       title: 'Event Title',
-      description: 'Description text with #ogcal:tag:outdoor directives...',
+      description: 'Description text with #already:tag:outdoor directives...',
       location: 'Austin, TX',
       start: '2026-04-15T19:00:00-05:00',
       end: '2026-04-15T21:00:00-05:00',
@@ -106,7 +106,7 @@ When using `config.data`, provide this structure:
 }
 ```
 
-og-cal also accepts **raw Google Calendar API JSON** (the response from `calendars/{id}/events`). It auto-detects the format by checking for an `items` array and transforms it.
+already-cal also accepts **raw Google Calendar API JSON** (the response from `calendars/{id}/events`). It auto-detects the format by checking for an `items` array and transforms it.
 
 ## Attachment Types
 

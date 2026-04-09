@@ -1,4 +1,4 @@
-# og-cal
+# already-cal
 
 Display Google Calendar events on any website. Six views, responsive design, full theming, no framework dependencies.
 
@@ -7,11 +7,11 @@ Display Google Calendar events on any website. Six views, responsive design, ful
 ## Quick Start
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/stavxyz/og-cal@main/dist/og-cal.min.css">
-<script src="https://cdn.jsdelivr.net/gh/stavxyz/og-cal@main/dist/og-cal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/stavxyz/already-cal@main/dist/already-cal.min.css">
+<script src="https://cdn.jsdelivr.net/gh/stavxyz/already-cal@main/dist/already-cal.min.js"></script>
 
 <!-- Zero JS — just data attributes -->
-<div data-og-cal
+<div data-already-cal
      data-api-key="YOUR_GOOGLE_API_KEY"
      data-calendar-id="YOUR_CALENDAR_ID@group.calendar.google.com"
      data-default-view="grid">
@@ -21,7 +21,7 @@ Display Google Calendar events on any website. Six views, responsive design, ful
 Or initialize with JavaScript for more control:
 
 ```js
-OgCal.init({
+Already.init({
   el: '#cal',
   google: {
     apiKey: 'YOUR_GOOGLE_API_KEY',
@@ -32,7 +32,7 @@ OgCal.init({
 
 ## How It Works
 
-Put URLs in your Google Calendar event descriptions — og-cal does the rest:
+Put URLs in your Google Calendar event descriptions — already-cal does the rest:
 
 - **Image URLs** (`.png`, `.jpg`, etc.) become the event thumbnail and detail gallery
 - **Google Drive links** (`drive.google.com/file/d/.../view`) are converted to servable image URLs
@@ -46,10 +46,10 @@ Everything is extracted and cleaned up automatically. Raw URLs are removed from 
 
 ### 1. Pre-loaded (recommended for production)
 
-Pass event data server-side. Accepts og-cal schema **or raw Google Calendar API JSON** — og-cal auto-detects the format. Your server can just proxy and cache the Google Calendar API response with zero transform.
+Pass event data server-side. Accepts already-cal schema **or raw Google Calendar API JSON** — already-cal auto-detects the format. Your server can just proxy and cache the Google Calendar API response with zero transform.
 
 ```js
-OgCal.init({
+Already.init({
   el: '#cal',
   data: googleCalendarApiResponse, // { items: [...], summary: '...', timeZone: '...' }
 });
@@ -57,10 +57,10 @@ OgCal.init({
 
 ### 2. Fetch URL
 
-Point at your own endpoint returning og-cal schema or raw Google Calendar API JSON.
+Point at your own endpoint returning already-cal schema or raw Google Calendar API JSON.
 
 ```js
-OgCal.init({ el: '#cal', fetchUrl: 'https://your-api.com/events' });
+Already.init({ el: '#cal', fetchUrl: 'https://your-api.com/events' });
 ```
 
 ### 3. Direct Google Calendar API
@@ -68,7 +68,7 @@ OgCal.init({ el: '#cal', fetchUrl: 'https://your-api.com/events' });
 Fetches client-side. The API key is visible in page source — restrict it in the Google Cloud Console.
 
 ```js
-OgCal.init({
+Already.init({
   el: '#cal',
   google: { apiKey: 'YOUR_API_KEY', calendarId: 'YOUR_CALENDAR_ID' },
 });
@@ -92,11 +92,11 @@ Visitors can switch views via the selector bar. Their preference is saved in loc
 Every option has a sensible default. Pass only what you need.
 
 ```js
-OgCal.init({
+Already.init({
   el: '#cal',                          // CSS selector or DOM element
 
   // --- Data (pick one) ---
-  data: { /* og-cal or Google Calendar API JSON */ },
+  data: { /* already-cal or Google Calendar API JSON */ },
   fetchUrl: 'https://...',
   google: { apiKey, calendarId, maxResults: 50 },
 
@@ -153,7 +153,7 @@ OgCal.init({
   // --- Behavior ---
   maxEventsPerDay: 3,                  // month view: chips before "+N more"
   locationLinkTemplate: 'https://maps.google.com/?q={location}',
-  storageKeyPrefix: 'ogcal',          // for multiple instances
+  storageKeyPrefix: 'already',        // for multiple instances
   imageExtensions: null,               // null = defaults: png, jpg, jpeg, gif, webp
 
   // --- Link extraction ---
@@ -163,7 +163,7 @@ OgCal.init({
   // Social platforms auto-detect handles:
   //   "https://instagram.com/savebigbend" → "Follow @savebigbend on Instagram"
   knownPlatforms: [
-    ...OgCal.DEFAULTS.knownPlatforms,
+    ...Already.DEFAULTS.knownPlatforms,
     { pattern: /your-site\.com/i, label: 'Visit Our Site' },
     { pattern: /custom\.app/i, labelFn: (url) => `Open ${new URL(url).pathname}` },
   ],
@@ -199,7 +199,7 @@ All options also work as HTML `data-` attributes for zero-JS setup. See the [dat
 
 | Attribute | Maps to |
 |-----------|---------|
-| `data-og-cal` | Enables auto-init (required) |
+| `data-already-cal` | Enables auto-init (required) |
 | `data-api-key` | `google.apiKey` |
 | `data-calendar-id` | `google.calendarId` |
 | `data-max-results` | `google.maxResults` |
@@ -246,7 +246,7 @@ Social platforms auto-detect handles from profile URLs (e.g. `instagram.com/save
 
 ## Event Images
 
-og-cal collects images from three sources:
+already-cal collects images from three sources:
 
 1. **Image URLs in the description** (`.png`, `.jpg`, `.gif`, `.webp`) — extracted and removed from rendered text
 2. **Google Drive links in the description** (`drive.google.com/file/d/.../view`, `/open?id=...`, `/uc?id=...`) — converted to direct-servable URLs via `lh3.googleusercontent.com` and removed from rendered text. The file must be publicly shared.
@@ -259,7 +259,7 @@ To add image attachments via the Google Calendar API, use `supportsAttachments: 
 
 ## Attachments
 
-og-cal detects file URLs in event descriptions and surfaces them as downloadable attachments. Any URL ending in a recognized file extension — `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.csv`, `.ppt`, `.pptx`, `.zip`, `.txt` — is extracted from the description text and added to the event's `attachments` array.
+already-cal detects file URLs in event descriptions and surfaces them as downloadable attachments. Any URL ending in a recognized file extension — `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.csv`, `.ppt`, `.pptx`, `.zip`, `.txt` — is extracted from the description text and added to the event's `attachments` array.
 
 Dropbox and Google Drive URLs are normalized to direct-download links before being stored. Each attachment follows this schema:
 
@@ -271,37 +271,36 @@ Attachments are rendered as a list of download links in the detail view, below t
 
 ## Directives
 
-Directives let you control og-cal behavior directly from event descriptions using a hashtag syntax. This is useful when you don't have access to code — you can add platform links, images, and metadata tags right inside a Google Calendar event description.
+Directives let you control already-cal behavior directly from event descriptions using a hashtag syntax. This is useful when you don't have access to code — you can add platform links, images, and metadata tags right inside a Google Calendar event description.
 
 ### Syntax
 
 ```
-#ogcal:<type>:<value>
-#showcal:<type>:<value>
+#already:<type>:<value>
 ```
 
-Both `ogcal` and `showcal` prefixes are supported (case-insensitive). Directives are stripped from the rendered description.
+The `#already:` prefix is case-insensitive. Directives are stripped from the rendered description.
 
 ### Platform link directives
 
 Add a platform button without pasting the full URL:
 
 ```
-#ogcal:instagram:savebigbend     → "Follow @savebigbend on Instagram"
-#ogcal:zoom:123456789            → "Join Zoom" (links to zoom.us/j/123456789)
-#ogcal:discord:AbCdEf            → "Join Discord" (links to discord.gg/AbCdEf)
-#ogcal:eventbrite:12345          → "RSVP on Eventbrite"
+#already:instagram:savebigbend     → "Follow @savebigbend on Instagram"
+#already:zoom:123456789            → "Join Zoom" (links to zoom.us/j/123456789)
+#already:discord:AbCdEf            → "Join Discord" (links to discord.gg/AbCdEf)
+#already:eventbrite:12345          → "RSVP on Eventbrite"
 ```
 
 All 18 built-in platforms are supported. Aliases: `twitter` → X, `meet` → Google Meet, `forms` → Google Forms, `maps` → Google Maps.
 
-Directives and URLs are deduplicated: `#ogcal:instagram:foo` and `https://instagram.com/foo` produce the same canonical ID, so only one button renders.
+Directives and URLs are deduplicated: `#already:instagram:foo` and `https://instagram.com/foo` produce the same canonical ID, so only one button renders.
 
 ### Image directives
 
 ```
-#ogcal:image:https://example.com/flyer.png    → adds image to gallery
-#showcal:image:drive:ABC123                    → Google Drive image by file ID
+#already:image:https://example.com/flyer.png    → adds image to gallery
+#already:image:drive:ABC123                    → Google Drive image by file ID
 ```
 
 ### Featured and hidden directives
@@ -309,8 +308,8 @@ Directives and URLs are deduplicated: `#ogcal:instagram:foo` and `https://instag
 Control event visibility and prominence:
 
 ```
-#ogcal:featured    → pins event to top of its date group, adds star badge
-#ogcal:hidden      → hides event from all views (still accessible via direct link)
+#already:featured    → pins event to top of its date group, adds star badge
+#already:hidden      → hides event from all views (still accessible via direct link)
 ```
 
 Featured events sort first within their date in all views. Hidden events are filtered out before rendering. Both flags are available on the event object as `event.featured` and `event.hidden` booleans.
@@ -320,18 +319,18 @@ Featured events sort first within their date in all views. Hidden events are fil
 Tags are rendered as badge pills in the detail view and as filterable pills in the tag filter bar:
 
 ```
-#ogcal:tag:fundraiser        → scalar tag badge "fundraiser"
-#ogcal:tag:outdoor           → scalar tag badge "outdoor"
-#ogcal:cost:$25              → key-value badge "cost: $25"
-#ogcal:capacity:50           → key-value badge "capacity: 50"
-#ogcal:rsvp:https://form.com → rendered as a link button "Rsvp"
+#already:tag:fundraiser        → scalar tag badge "fundraiser"
+#already:tag:outdoor           → scalar tag badge "outdoor"
+#already:cost:$25              → key-value badge "cost: $25"
+#already:capacity:50           → key-value badge "capacity: 50"
+#already:rsvp:https://form.com → rendered as a link button "Rsvp"
 ```
 
 Key-value tags where the value is a URL are rendered as link buttons alongside platform links.
 
 ## Tag Filtering
 
-When events have tags (via `#ogcal:tag:` directives or key-value directives), a filter bar appears above the view. Tags display as clickable pills ordered by frequency.
+When events have tags (via `#already:tag:` directives or key-value directives), a filter bar appears above the view. Tags display as clickable pills ordered by frequency.
 
 - Click a pill to filter events to those matching that tag
 - Select multiple pills for union/OR filtering (events matching **any** selected tag)
@@ -350,7 +349,7 @@ Events can be linked directly via hash or path:
 Use `initialEvent` to open a specific event on load:
 
 ```js
-OgCal.init({
+Already.init({
   el: '#cal',
   initialEvent: 'abc123',  // opens detail view for this event ID
   // ...
@@ -359,7 +358,7 @@ OgCal.init({
 
 Priority order: `initialEvent` > URL hash/path > localStorage > `defaultView`.
 
-**Note:** og-cal manages client-side OG meta tags (`og:title`, `og:description`, `og:image`) when viewing event details. This works for JavaScript-rendering crawlers (like Google) but social media crawlers (Facebook, Twitter) that don't execute JS will not see these tags. For full social sharing support, use server-side rendering or a prerender service.
+**Note:** already-cal manages client-side OG meta tags (`og:title`, `og:description`, `og:image`) when viewing event details. This works for JavaScript-rendering crawlers (like Google) but social media crawlers (Facebook, Twitter) that don't execute JS will not see these tags. For full social sharing support, use server-side rendering or a prerender service.
 
 ## Description Rendering
 
@@ -389,13 +388,13 @@ All breakpoints and mobile behavior are configurable.
 
 ## Internationalization
 
-og-cal uses `Intl.DateTimeFormat` for all date/time formatting. Set `locale` and `weekStartDay` to match your audience. All UI strings are overridable via `i18n`.
+already-cal uses `Intl.DateTimeFormat` for all date/time formatting. Set `locale` and `weekStartDay` to match your audience. All UI strings are overridable via `i18n`.
 
 ## Multiple Instances
 
 ```js
-OgCal.init({ el: '#events-a', storageKeyPrefix: 'cal-a', ... });
-OgCal.init({ el: '#events-b', storageKeyPrefix: 'cal-b', ... });
+Already.init({ el: '#events-a', storageKeyPrefix: 'cal-a', ... });
+Already.init({ el: '#events-b', storageKeyPrefix: 'cal-b', ... });
 ```
 
 ## Accessibility
@@ -419,12 +418,12 @@ open dev.html     # local preview with mock data
 ## Built with
 
 - Vanilla JavaScript (no framework)
-- [esbuild](https://esbuild.github.io/) for bundling (IIFE format, `OgCal` global)
+- [esbuild](https://esbuild.github.io/) for bundling (IIFE format, `Already` global)
 - [marked](https://github.com/markedjs/marked) for markdown (bundled)
 - CSS custom properties for theming
 - `Intl.DateTimeFormat` for locale-aware formatting
 
-Build outputs: `dist/og-cal.js` (+ sourcemap), `dist/og-cal.min.js`, `dist/og-cal.css`, `dist/og-cal.min.css`. The default config object is available as `OgCal.DEFAULTS` for extending (e.g., `OgCal.DEFAULTS.knownPlatforms`).
+Build outputs: `dist/already-cal.js` (+ sourcemap), `dist/already-cal.min.js`, `dist/already-cal.css`, `dist/already-cal.min.css`. The default config object is available as `Already.DEFAULTS` for extending (e.g., `Already.DEFAULTS.knownPlatforms`).
 
 ## License
 
