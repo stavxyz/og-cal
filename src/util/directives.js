@@ -105,12 +105,14 @@ function parseDirective(body) {
 }
 
 export function extractDirectives(description) {
-  if (!description) return { tokens: [], description };
+  if (!description) return { tokens: [], description, featured: false, hidden: false };
   description = description.replace(/&amp;/g, '&');
 
   const tokens = [];
   const seen = new Set();
   let cleaned = description;
+  let featured = false;
+  let hidden = false;
 
   const matches = [...description.matchAll(DIRECTIVE_PATTERN)];
   for (const match of matches) {
@@ -119,6 +121,17 @@ export function extractDirectives(description) {
 
     // Always strip the directive from description, even if malformed
     cleaned = stripUrl(cleaned, fullMatch);
+
+    // Intercept featured/hidden flags before parseDirective (they have no colon in body)
+    const bodyLower = body.toLowerCase();
+    if (bodyLower === 'featured') {
+      featured = true;
+      continue;
+    }
+    if (bodyLower === 'hidden') {
+      hidden = true;
+      continue;
+    }
 
     const token = parseDirective(body);
     if (!token) continue;
@@ -130,5 +143,5 @@ export function extractDirectives(description) {
   }
 
   cleaned = cleanupHtml(cleaned);
-  return { tokens, description: cleaned };
+  return { tokens, description: cleaned, featured, hidden };
 }
