@@ -1,5 +1,5 @@
-import { getDaysInMonth, getFirstDayOfMonth, getMonthName, isSameDay, isToday, getDatePartsInTz, getDayNames } from '../util/dates.js';
-import { escapeHtml } from '../util/sanitize.js';
+import { getDaysInMonth, getFirstDayOfMonth, getMonthName, isToday, getDatePartsInTz, getDayNames } from '../util/dates.js';
+import { createElement, filterHidden, sortFeatured } from './helpers.js';
 import { setEventDetail } from '../router.js';
 
 export function renderMonthView(container, events, timezone, currentDate, config) {
@@ -10,15 +10,16 @@ export function renderMonthView(container, events, timezone, currentDate, config
   const i18n = config.i18n || {};
   const moreEventsTemplate = i18n.moreEvents || '+{count} more';
 
+  events = filterHidden(events);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month, weekStartDay);
   const monthName = getMonthName(year, month, locale);
-
   const dayNames = getDayNames(locale, weekStartDay);
 
-  // Group events by date in the CALENDAR's timezone (not browser local time)
+  // Group events by date in the calendar's timezone
   const eventsByDate = {};
   for (const event of events) {
     const parts = getDatePartsInTz(event.start, timezone, locale);
@@ -27,78 +28,69 @@ export function renderMonthView(container, events, timezone, currentDate, config
     eventsByDate[key].push(event);
   }
 
-  const grid = document.createElement('div');
-  grid.className = 'ogcal-month';
+  const grid = createElement('div', 'ogcal-month');
 
   // Navigation
-  const nav = document.createElement('div');
-  nav.className = 'ogcal-month-nav';
-  nav.innerHTML = `
-    <button class="ogcal-month-prev" aria-label="Previous month">‹</button>
-    <span class="ogcal-month-title">${monthName}</span>
-    <button class="ogcal-month-next" aria-label="Next month">›</button>
-  `;
+  const nav = createElement('div', 'ogcal-month-nav');
 
-  nav.querySelector('.ogcal-month-prev').addEventListener('click', () => {
-    const prev = new Date(year, month - 1, 1);
-    renderMonthView(container, events, timezone, prev, config);
+  const prevBtn = createElement('button', 'ogcal-month-prev', { 'aria-label': 'Previous month' });
+  prevBtn.textContent = '\u2039';
+  prevBtn.addEventListener('click', () => {
+    renderMonthView(container, events, timezone, new Date(year, month - 1, 1), config);
   });
-  nav.querySelector('.ogcal-month-next').addEventListener('click', () => {
-    const next = new Date(year, month + 1, 1);
-    renderMonthView(container, events, timezone, next, config);
+  nav.appendChild(prevBtn);
+
+  const title = createElement('span', 'ogcal-month-title');
+  title.textContent = `${monthName} ${year}`;
+  nav.appendChild(title);
+
+  const nextBtn = createElement('button', 'ogcal-month-next', { 'aria-label': 'Next month' });
+  nextBtn.textContent = '\u203a';
+  nextBtn.addEventListener('click', () => {
+    renderMonthView(container, events, timezone, new Date(year, month + 1, 1), config);
   });
+  nav.appendChild(nextBtn);
 
   grid.appendChild(nav);
 
   // Day headers
-  const headerRow = document.createElement('div');
-  headerRow.className = 'ogcal-month-header';
-  headerRow.setAttribute('role', 'row');
+  const headerRow = createElement('div', 'ogcal-month-header', { role: 'row' });
   for (const name of dayNames) {
-    const cell = document.createElement('div');
-    cell.className = 'ogcal-month-dayname';
+    const cell = createElement('div', 'ogcal-month-dayname');
     cell.textContent = name;
     headerRow.appendChild(cell);
   }
   grid.appendChild(headerRow);
 
-  // Calendar grid
-  const body = document.createElement('div');
-  body.className = 'ogcal-month-body';
-  body.setAttribute('role', 'grid');
+  // Calendar body
+  const body = createElement('div', 'ogcal-month-body', { role: 'grid' });
 
-  let row = document.createElement('div');
-  row.className = 'ogcal-month-row';
-  row.setAttribute('role', 'row');
+  let row = createElement('div', 'ogcal-month-row', { role: 'row' });
 
   // Empty cells before first day
   for (let i = 0; i < firstDay; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'ogcal-month-cell ogcal-month-cell--empty';
-    cell.setAttribute('role', 'gridcell');
-    row.appendChild(cell);
+    row.appendChild(createElement('div', 'ogcal-month-cell ogcal-month-cell--empty', { role: 'gridcell' }));
   }
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const cellDate = new Date(year, month, day);
-    const key = `${year}-${month}-${day}`;
-    const dayEvents = eventsByDate[key] || [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(year, month, d);
+    const key = `${year}-${month}-${d}`;
+    const dayEvents = sortFeatured(eventsByDate[key] || []);
     const today = isToday(cellDate);
 
-    const cell = document.createElement('div');
+    const cell = createElement('div', null, { role: 'gridcell' });
     cell.className = 'ogcal-month-cell' + (today ? ' ogcal-month-cell--today' : '') +
       (dayEvents.length ? ' ogcal-month-cell--has-events' : '');
-    cell.setAttribute('role', 'gridcell');
 
-    const dayNum = document.createElement('div');
-    dayNum.className = 'ogcal-month-day';
-    dayNum.textContent = day;
+    const dayNum = createElement('div', 'ogcal-month-day');
+    dayNum.textContent = d;
     cell.appendChild(dayNum);
 
     for (const event of dayEvents.slice(0, maxEventsPerDay)) {
-      const chip = document.createElement('div');
-      chip.className = 'ogcal-month-chip';
-      chip.textContent = event.title; // textContent is safe, no escaping needed
+      const chip = createElement('div', 'ogcal-month-chip' + (event.featured ? ' ogcal-month-chip--featured' : ''));
+      chip.textContent = event.title;
+      chip.setAttribute('tabindex', '0');
+      chip.setAttribute('role', 'button');
       chip.addEventListener('click', (e) => {
         e.stopPropagation();
         if (config.onEventClick) {
@@ -107,23 +99,31 @@ export function renderMonthView(container, events, timezone, currentDate, config
         }
         setEventDetail(event.id);
       });
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (config.onEventClick) {
+            const result = config.onEventClick(event, 'month');
+            if (result === false) return;
+          }
+          setEventDetail(event.id);
+        }
+      });
       cell.appendChild(chip);
     }
 
     if (dayEvents.length > maxEventsPerDay) {
-      const more = document.createElement('div');
-      more.className = 'ogcal-month-more';
+      const more = createElement('div', 'ogcal-month-more');
       more.textContent = moreEventsTemplate.replace('{count}', dayEvents.length - maxEventsPerDay);
       cell.appendChild(more);
     }
 
     row.appendChild(cell);
 
-    if ((firstDay + day) % 7 === 0) {
+    if ((firstDay + d) % 7 === 0) {
       body.appendChild(row);
-      row = document.createElement('div');
-      row.className = 'ogcal-month-row';
-      row.setAttribute('role', 'row');
+      row = createElement('div', 'ogcal-month-row', { role: 'row' });
     }
   }
 
@@ -131,10 +131,7 @@ export function renderMonthView(container, events, timezone, currentDate, config
   const remaining = (firstDay + daysInMonth) % 7;
   if (remaining > 0) {
     for (let i = remaining; i < 7; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'ogcal-month-cell ogcal-month-cell--empty';
-      cell.setAttribute('role', 'gridcell');
-      row.appendChild(cell);
+      row.appendChild(createElement('div', 'ogcal-month-cell ogcal-month-cell--empty', { role: 'gridcell' }));
     }
     body.appendChild(row);
   }
