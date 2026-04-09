@@ -12,3 +12,4 @@ global.DocumentFragment = dom.window.DocumentFragment;
 global.localStorage = dom.window.localStorage;
 global.navigator = dom.window.navigator;
 global.CustomEvent = dom.window.CustomEvent;
+global.Node = dom.window.Node;
