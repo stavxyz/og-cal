@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Every option has a sensible default. Pass only what you need to `OgCal.init()`.
+Every option has a sensible default. Pass only what you need to `Already.init()`.
 
 ## Data Source Options
 
@@ -9,7 +9,7 @@ Provide exactly one data source.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `el` | `string \| HTMLElement` | *required* | CSS selector or DOM element to mount into |
-| `data` | `object \| null` | `null` | Pre-loaded event data (og-cal schema or raw Google Calendar API JSON) |
+| `data` | `object \| null` | `null` | Pre-loaded event data (already-cal schema or raw Google Calendar API JSON) |
 | `fetchUrl` | `string \| null` | `null` | URL to fetch event data from |
 | `google` | `object \| null` | `null` | Google Calendar API config (see below) |
 
@@ -49,25 +49,25 @@ The subscribe button appears when a URL is available. If the calendar descriptio
 |--------|------|---------|-------------|
 | `theme` | `object` | `{}` | Custom theme values merged with defaults |
 
-Theme properties are applied as CSS custom properties on the `.ogcal` element:
+Theme properties are applied as CSS custom properties on the `.already` element:
 
 | Theme Key | CSS Custom Property | Default | Description |
 |-----------|-------------------|---------|-------------|
-| `primary` | `--ogcal-primary` | `'#8B4513'` | Brand/accent color |
-| `primaryText` | `--ogcal-primary-text` | `'#ffffff'` | Text color on primary backgrounds |
-| `background` | `--ogcal-background` | `'#f5f0eb'` | Page/container background |
-| `surface` | `--ogcal-surface` | `'#ffffff'` | Card and surface background |
-| `text` | `--ogcal-text` | `'#1a1a1a'` | Primary text color |
-| `textSecondary` | `--ogcal-text-secondary` | `'#666'` | Secondary/meta text color |
-| `radius` | `--ogcal-radius` | `'8px'` | Border radius for all elements |
-| `fontFamily` | `--ogcal-font-family` | `'system-ui, sans-serif'` | Font stack |
+| `primary` | `--already-primary` | `'#8B4513'` | Brand/accent color |
+| `primaryText` | `--already-primary-text` | `'#ffffff'` | Text color on primary backgrounds |
+| `background` | `--already-background` | `'#f5f0eb'` | Page/container background |
+| `surface` | `--already-surface` | `'#ffffff'` | Card and surface background |
+| `text` | `--already-text` | `'#1a1a1a'` | Primary text color |
+| `textSecondary` | `--already-text-secondary` | `'#666'` | Secondary/meta text color |
+| `radius` | `--already-radius` | `'8px'` | Border radius for all elements |
+| `fontFamily` | `--already-font-family` | `'system-ui, sans-serif'` | Font stack |
 
 You can also override these directly in CSS:
 
 ```css
-.ogcal {
-  --ogcal-primary: #2563eb;
-  --ogcal-radius: 12px;
+.already {
+  --already-primary: #2563eb;
+  --already-radius: 12px;
 }
 ```
 
@@ -109,7 +109,7 @@ You can also override these directly in CSS:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `locationLinkTemplate` | `string` | `'https://maps.google.com/?q={location}'` | URL template for location links. `{location}` is replaced with the encoded location |
-| `storageKeyPrefix` | `string` | `'ogcal'` | localStorage key prefix (set different values for multiple instances) |
+| `storageKeyPrefix` | `string` | `'already'` | localStorage key prefix (set different values for multiple instances) |
 | `imageExtensions` | `string[] \| null` | `null` | Image file extensions to detect in descriptions. `null` uses defaults: `['png', 'jpg', 'jpeg', 'gif', 'webp']` |
 
 ## Link Extraction
@@ -132,7 +132,7 @@ Extend the defaults:
 
 ```js
 knownPlatforms: [
-  ...OgCal.DEFAULTS.knownPlatforms,
+  ...Already.DEFAULTS.knownPlatforms,
   { pattern: /your-site\.com/i, label: 'Visit Our Site' },
 ],
 ```
@@ -263,7 +263,7 @@ All options can be set via HTML `data-` attributes for zero-JS setup.
 
 | Attribute | Maps to | Type |
 |-----------|---------|------|
-| `data-og-cal` | Enables auto-init | flag (required) |
+| `data-already-cal` | Enables auto-init | flag (required) |
 | `data-api-key` | `google.apiKey` | string |
 | `data-calendar-id` | `google.calendarId` | string |
 | `data-max-results` | `google.maxResults` | integer |
