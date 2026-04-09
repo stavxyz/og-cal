@@ -1,10 +1,9 @@
 import { formatDatetime, formatDate } from '../util/dates.js';
 import { renderDescription } from '../util/description.js';
-import { escapeHtml } from '../util/sanitize.js';
+import { createElement } from './helpers.js';
 
 function renderGallery(images, altText) {
-  const gallery = document.createElement('div');
-  gallery.className = 'ogcal-detail-gallery';
+  const gallery = createElement('div', 'ogcal-detail-gallery');
 
   let loadedImages = [...images];
   let current = 0;
@@ -29,21 +28,16 @@ function renderGallery(images, altText) {
 
   if (images.length <= 1) return gallery;
 
-  counter = document.createElement('div');
-  counter.className = 'ogcal-detail-gallery-counter';
+  counter = createElement('div', 'ogcal-detail-gallery-counter');
   counter.textContent = `1 / ${images.length}`;
   gallery.appendChild(counter);
 
-  const prevBtn = document.createElement('button');
-  prevBtn.className = 'ogcal-detail-gallery-prev';
-  prevBtn.innerHTML = '&#8249;';
-  prevBtn.setAttribute('aria-label', 'Previous image');
+  const prevBtn = createElement('button', 'ogcal-detail-gallery-prev', { 'aria-label': 'Previous image' });
+  prevBtn.textContent = '\u2039';
   gallery.appendChild(prevBtn);
 
-  const nextBtn = document.createElement('button');
-  nextBtn.className = 'ogcal-detail-gallery-next';
-  nextBtn.innerHTML = '&#8250;';
-  nextBtn.setAttribute('aria-label', 'Next image');
+  const nextBtn = createElement('button', 'ogcal-detail-gallery-next', { 'aria-label': 'Next image' });
+  nextBtn.textContent = '\u203a';
   gallery.appendChild(nextBtn);
 
   function goTo(idx) {
@@ -74,43 +68,43 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   const images = event.images && event.images.length > 0 ? event.images : (event.image ? [event.image] : []);
   const hasImages = images.length > 0;
 
-  const detail = document.createElement('div');
-  detail.className = 'ogcal-detail';
+  const detail = createElement('div', 'ogcal-detail');
 
-  const backBtn = document.createElement('button');
-  backBtn.className = 'ogcal-detail-back';
+  const backBtn = createElement('button', 'ogcal-detail-back');
   backBtn.textContent = backLabel;
   backBtn.addEventListener('click', onBack);
   detail.appendChild(backBtn);
 
   // Two-column layout: gallery left, content right
-  const body = document.createElement('div');
-  body.className = hasImages ? 'ogcal-detail-body ogcal-detail-body--has-image' : 'ogcal-detail-body';
+  const body = createElement('div', hasImages ? 'ogcal-detail-body ogcal-detail-body--has-image' : 'ogcal-detail-body');
 
   if (hasImages) {
-    const galleryCol = document.createElement('div');
-    galleryCol.className = 'ogcal-detail-image';
-    galleryCol.appendChild(renderGallery(images, escapeHtml(event.title)));
+    const galleryCol = createElement('div', 'ogcal-detail-image');
+    galleryCol.appendChild(renderGallery(images, event.title));
     body.appendChild(galleryCol);
   }
 
-  const content = document.createElement('div');
-  content.className = 'ogcal-detail-content';
+  const content = createElement('div', 'ogcal-detail-content');
 
-  const title = document.createElement('h2');
-  title.className = 'ogcal-detail-title';
-  title.textContent = event.title;
-  content.appendChild(title);
+  const titleEl = createElement('h2', 'ogcal-detail-title');
+  titleEl.textContent = event.title;
+  content.appendChild(titleEl);
 
-  const meta = document.createElement('div');
-  meta.className = 'ogcal-detail-meta';
+  const meta = createElement('div', 'ogcal-detail-meta');
   const dateStr = event.allDay
     ? formatDate(event.start, timezone, locale)
     : formatDatetime(event.start, timezone, locale);
-  meta.innerHTML = `<div class="ogcal-detail-date">${dateStr}</div>`;
+  const dateDiv = createElement('div', 'ogcal-detail-date');
+  dateDiv.textContent = dateStr;
+  meta.appendChild(dateDiv);
+
   if (event.location) {
     const mapsUrl = locationTemplate.replace('{location}', encodeURIComponent(event.location));
-    meta.innerHTML += `<div class="ogcal-detail-location"><a href="${mapsUrl}" target="_blank" rel="noopener">${escapeHtml(event.location)}</a></div>`;
+    const locDiv = createElement('div', 'ogcal-detail-location');
+    const locLink = createElement('a', null, { href: mapsUrl, target: '_blank', rel: 'noopener' });
+    locLink.textContent = event.location;
+    locDiv.appendChild(locLink);
+    meta.appendChild(locDiv);
   }
   content.appendChild(meta);
 
@@ -122,11 +116,9 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   });
 
   if (scalarAndTextTags.length > 0) {
-    const tagsDiv = document.createElement('div');
-    tagsDiv.className = 'ogcal-detail-tags';
+    const tagsDiv = createElement('div', 'ogcal-detail-tags');
     for (const tag of scalarAndTextTags) {
-      const span = document.createElement('span');
-      span.className = 'ogcal-detail-tag';
+      const span = createElement('span', 'ogcal-detail-tag');
       span.textContent = tag.key === 'tag' ? tag.value : `${tag.key}: ${tag.value}`;
       tagsDiv.appendChild(span);
     }
@@ -134,21 +126,15 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   }
 
   if (event.description) {
-    const desc = document.createElement('div');
-    desc.className = 'ogcal-detail-description';
+    const desc = createElement('div', 'ogcal-detail-description');
     desc.innerHTML = renderDescription(event.description, config);
     content.appendChild(desc);
   }
 
   if (event.attachments && event.attachments.length > 0) {
-    const attachDiv = document.createElement('div');
-    attachDiv.className = 'ogcal-detail-attachments';
+    const attachDiv = createElement('div', 'ogcal-detail-attachments');
     for (const att of event.attachments) {
-      const a = document.createElement('a');
-      a.className = 'ogcal-detail-attachment';
-      a.href = att.url;
-      a.target = '_blank';
-      a.rel = 'noopener';
+      const a = createElement('a', 'ogcal-detail-attachment', { href: att.url, target: '_blank', rel: 'noopener' });
       a.textContent = att.label;
       attachDiv.appendChild(a);
     }
@@ -161,14 +147,9 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   const allLinks = [...(event.links || []), ...urlTags.map(t => ({ label: titleCase(t.key), url: t.value }))];
 
   if (allLinks.length > 0) {
-    const linksDiv = document.createElement('div');
-    linksDiv.className = 'ogcal-detail-links';
+    const linksDiv = createElement('div', 'ogcal-detail-links');
     for (const link of allLinks) {
-      const a = document.createElement('a');
-      a.className = 'ogcal-detail-link';
-      a.href = link.url;
-      a.target = '_blank';
-      a.rel = 'noopener';
+      const a = createElement('a', 'ogcal-detail-link', { href: link.url, target: '_blank', rel: 'noopener' });
       a.textContent = link.label;
       linksDiv.appendChild(a);
     }
