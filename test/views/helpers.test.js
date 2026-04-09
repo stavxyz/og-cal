@@ -87,6 +87,29 @@ describe('bindEventClick', () => {
     el.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     assert.strictEqual(window.location.hash, '#event/evt-1');
   });
+
+  it('stops propagation when stopPropagation option is true', () => {
+    const parent = document.createElement('div');
+    const child = document.createElement('div');
+    parent.appendChild(child);
+    let parentClicked = false;
+    parent.addEventListener('click', () => { parentClicked = true; });
+    bindEventClick(child, { id: 'evt-1' }, 'month', {}, { stopPropagation: true });
+    child.click();
+    assert.strictEqual(parentClicked, false);
+    assert.strictEqual(window.location.hash, '#event/evt-1');
+  });
+
+  it('does not stop propagation by default', () => {
+    const parent = document.createElement('div');
+    const child = document.createElement('div');
+    parent.appendChild(child);
+    let parentClicked = false;
+    parent.addEventListener('click', () => { parentClicked = true; });
+    bindEventClick(child, { id: 'evt-2' }, 'grid', {});
+    child.click();
+    assert.strictEqual(parentClicked, true);
+  });
 });
 
 describe('applyEventClasses', () => {
@@ -212,5 +235,21 @@ describe('sortFeaturedByDate', () => {
     const result = sortFeaturedByDate(events, 'UTC', 'en-US');
     assert.strictEqual(result[0].id, 'a');
     assert.strictEqual(result[1].id, 'b');
+  });
+
+  it('keeps same-date events grouped when interleaved with other dates', () => {
+    const events = [
+      { id: 'a', start: '2026-04-14T10:00:00Z', featured: false },
+      { id: 'b', start: '2026-04-14T14:00:00Z', featured: true },
+      { id: 'c', start: '2026-04-15T10:00:00Z', featured: false },
+      { id: 'd', start: '2026-04-14T16:00:00Z', featured: false },
+    ];
+    const result = sortFeaturedByDate(events, 'UTC', 'en-US');
+    // Apr 14 events grouped together: featured first, then non-featured in original order
+    assert.strictEqual(result[0].id, 'b');
+    assert.strictEqual(result[1].id, 'a');
+    assert.strictEqual(result[2].id, 'd');
+    // Apr 15 event last
+    assert.strictEqual(result[3].id, 'c');
   });
 });
