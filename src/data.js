@@ -49,11 +49,13 @@ export async function loadData(config) {
   return data;
 }
 
-function enrichEvent(event, config) {
+export function enrichEvent(event, config) {
   let description = event.description || '';
   let image = event.image || null;
   let images = (event.images && event.images.length > 0) ? event.images : [];
   let links = (event.links && event.links.length > 0) ? event.links : [];
+  let featured = event.featured || false;
+  let hidden = event.hidden || false;
 
   const tokenSet = new TokenSet();
 
@@ -62,6 +64,8 @@ function enrichEvent(event, config) {
     const result = extractDirectives(description);
     description = result.description;
     tokenSet.addAll(result.tokens);
+    if (result.featured) featured = true;
+    if (result.hidden) hidden = true;
   }
 
   // Step 2: Extract images from description if not already set
@@ -141,7 +145,7 @@ function enrichEvent(event, config) {
   const descriptionFormat = event.descriptionFormat || detectFormat(description);
 
   const { _imageAttachments, ...rest } = event;
-  return { ...rest, description, descriptionFormat, image, images, links, attachments, tags };
+  return { ...rest, description, descriptionFormat, image, images, links, attachments, tags, featured, hidden };
 }
 
 async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {
