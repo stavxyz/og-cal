@@ -14,49 +14,44 @@ before(async () => {
 // --- extractDirectives flag tests ---
 
 describe('extractDirectives — featured flag', () => {
-  it('extracts featured from #ogcal:featured', () => {
-    const result = extractDirectives('Event info #ogcal:featured');
+  it('extracts featured from #already:featured', () => {
+    const result = extractDirectives('Event info #already:featured');
     assert.strictEqual(result.featured, true);
     assert.strictEqual(result.hidden, false);
     assert.deepStrictEqual(result.tokens, []);
-    assert.ok(!result.description.includes('#ogcal'));
+    assert.ok(!result.description.includes('#already'));
     assert.ok(result.description.includes('Event info'));
   });
 
-  it('extracts featured from #showcal:featured', () => {
-    const result = extractDirectives('#showcal:featured');
-    assert.strictEqual(result.featured, true);
-  });
-
   it('is case-insensitive for the keyword', () => {
-    const result = extractDirectives('#ogcal:FEATURED');
+    const result = extractDirectives('#already:FEATURED');
     assert.strictEqual(result.featured, true);
   });
 });
 
 describe('extractDirectives — hidden flag', () => {
-  it('extracts hidden from #ogcal:hidden', () => {
-    const result = extractDirectives('#ogcal:hidden Event info');
+  it('extracts hidden from #already:hidden', () => {
+    const result = extractDirectives('#already:hidden Event info');
     assert.strictEqual(result.hidden, true);
     assert.strictEqual(result.featured, false);
     assert.deepStrictEqual(result.tokens, []);
   });
 
-  it('extracts hidden from #showcal:hidden', () => {
-    const result = extractDirectives('#showcal:hidden');
+  it('is case-insensitive for hidden keyword', () => {
+    const result = extractDirectives('#already:HIDDEN');
     assert.strictEqual(result.hidden, true);
   });
 });
 
 describe('extractDirectives — featured/hidden interaction', () => {
   it('handles both featured and hidden in same description', () => {
-    const result = extractDirectives('#ogcal:featured #ogcal:hidden');
+    const result = extractDirectives('#already:featured #already:hidden');
     assert.strictEqual(result.featured, true);
     assert.strictEqual(result.hidden, true);
   });
 
   it('coexists with other directives without consuming them', () => {
-    const result = extractDirectives('#ogcal:featured #ogcal:tag:outdoor');
+    const result = extractDirectives('#already:featured #already:tag:outdoor');
     assert.strictEqual(result.featured, true);
     assert.strictEqual(result.tokens.length, 1);
     assert.strictEqual(result.tokens[0].type, 'tag');
@@ -64,7 +59,7 @@ describe('extractDirectives — featured/hidden interaction', () => {
   });
 
   it('featured/hidden are not added to tokens', () => {
-    const result = extractDirectives('#ogcal:featured #ogcal:hidden');
+    const result = extractDirectives('#already:featured #already:hidden');
     assert.deepStrictEqual(result.tokens, []);
   });
 
@@ -91,14 +86,14 @@ describe('enrichEvent — featured/hidden propagation', () => {
     end: '2026-04-15T11:00:00Z',
   };
 
-  it('sets event.featured from #ogcal:featured directive', () => {
-    const event = enrichEvent({ ...baseEvent, description: '#ogcal:featured' }, {});
+  it('sets event.featured from #already:featured directive', () => {
+    const event = enrichEvent({ ...baseEvent, description: '#already:featured' }, {});
     assert.strictEqual(event.featured, true);
     assert.strictEqual(event.hidden, false);
   });
 
-  it('sets event.hidden from #ogcal:hidden directive', () => {
-    const event = enrichEvent({ ...baseEvent, description: '#ogcal:hidden' }, {});
+  it('sets event.hidden from #already:hidden directive', () => {
+    const event = enrichEvent({ ...baseEvent, description: '#already:hidden' }, {});
     assert.strictEqual(event.hidden, true);
     assert.strictEqual(event.featured, false);
   });
@@ -106,10 +101,10 @@ describe('enrichEvent — featured/hidden propagation', () => {
   it('featured directive is consumed — not in description or tags', () => {
     const event = enrichEvent({
       ...baseEvent,
-      description: '#ogcal:featured #ogcal:tag:outdoor',
+      description: '#already:featured #already:tag:outdoor',
     }, {});
     assert.strictEqual(event.featured, true);
-    assert.ok(!event.description.includes('#ogcal:featured'));
+    assert.ok(!event.description.includes('#already:featured'));
     assert.strictEqual(event.tags.length, 1);
     assert.strictEqual(event.tags[0].value, 'outdoor');
   });
@@ -117,10 +112,10 @@ describe('enrichEvent — featured/hidden propagation', () => {
   it('hidden directive is consumed — not in description or tags', () => {
     const event = enrichEvent({
       ...baseEvent,
-      description: '#ogcal:hidden Some text',
+      description: '#already:hidden Some text',
     }, {});
     assert.strictEqual(event.hidden, true);
-    assert.ok(!event.description.includes('#ogcal:hidden'));
+    assert.ok(!event.description.includes('#already:hidden'));
     assert.ok(event.description.includes('Some text'));
   });
 
