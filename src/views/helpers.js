@@ -12,8 +12,9 @@ export function createElement(tag, className, attrs) {
   return el;
 }
 
-export function bindEventClick(el, event, viewName, config) {
-  function handleClick() {
+export function bindEventClick(el, event, viewName, config, { stopPropagation = false } = {}) {
+  function handleClick(e) {
+    if (stopPropagation) e.stopPropagation();
     if (config.onEventClick) {
       const result = config.onEventClick(event, viewName);
       if (result === false) return;
@@ -24,7 +25,8 @@ export function bindEventClick(el, event, viewName, config) {
   el.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      handleClick();
+      if (stopPropagation) e.stopPropagation();
+      handleClick(e);
     }
   });
   el.setAttribute('tabindex', '0');
@@ -62,8 +64,14 @@ export function sortFeaturedByDate(events, timezone, locale) {
     const p = getDatePartsInTz(e.start, timezone, locale);
     return `${p.year}-${p.month}-${p.day}`;
   };
-  return [...events].sort((a, b) => {
-    if (dateKey(a) !== dateKey(b)) return 0;
-    return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
-  });
+  // Group by date preserving original order, sort featured first within each group
+  const groups = new Map();
+  for (const e of events) {
+    const key = dateKey(e);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  return [...groups.values()].flatMap(group =>
+    [...group].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+  );
 }

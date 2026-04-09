@@ -1,6 +1,5 @@
 import { getDaysInMonth, getFirstDayOfMonth, getMonthName, isToday, getDatePartsInTz, getDayNames } from '../util/dates.js';
-import { createElement, filterHidden, sortFeatured } from './helpers.js';
-import { setEventDetail } from '../router.js';
+import { createElement, bindEventClick, filterHidden, sortFeatured } from './helpers.js';
 
 export function renderMonthView(container, events, timezone, currentDate, config) {
   config = config || {};
@@ -89,27 +88,7 @@ export function renderMonthView(container, events, timezone, currentDate, config
     for (const event of dayEvents.slice(0, maxEventsPerDay)) {
       const chip = createElement('div', 'ogcal-month-chip' + (event.featured ? ' ogcal-month-chip--featured' : ''));
       chip.textContent = event.title;
-      chip.setAttribute('tabindex', '0');
-      chip.setAttribute('role', 'button');
-      chip.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (config.onEventClick) {
-          const result = config.onEventClick(event, 'month');
-          if (result === false) return;
-        }
-        setEventDetail(event.id);
-      });
-      chip.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          if (config.onEventClick) {
-            const result = config.onEventClick(event, 'month');
-            if (result === false) return;
-          }
-          setEventDetail(event.id);
-        }
-      });
+      bindEventClick(chip, event, 'month', config, { stopPropagation: true });
       cell.appendChild(chip);
     }
 

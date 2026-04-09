@@ -1,6 +1,5 @@
 import { getWeekDates, formatDateShort, isToday, getDatePartsInTz } from '../util/dates.js';
-import { createElement, filterHidden, sortFeatured } from './helpers.js';
-import { setEventDetail } from '../router.js';
+import { createElement, bindEventClick, filterHidden, sortFeatured } from './helpers.js';
 
 export function renderWeekView(container, events, timezone, currentDate, config) {
   config = config || {};
@@ -42,12 +41,13 @@ export function renderWeekView(container, events, timezone, currentDate, config)
   week.appendChild(nav);
 
   const columns = createElement('div', 'ogcal-week-columns');
+  const dayFmt = new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' });
 
   for (const date of dates) {
     const col = createElement('div', 'ogcal-week-col' + (isToday(date) ? ' ogcal-week-col--today' : ''));
 
     const header = createElement('div', 'ogcal-week-col-header');
-    const dayName = new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' }).format(date);
+    const dayName = dayFmt.format(date);
     const dayNameEl = createElement('span', 'ogcal-week-dayname');
     dayNameEl.textContent = dayName;
     header.appendChild(dayNameEl);
@@ -64,25 +64,7 @@ export function renderWeekView(container, events, timezone, currentDate, config)
     for (const event of dayEvents) {
       const block = createElement('div', 'ogcal-week-event' + (event.featured ? ' ogcal-week-event--featured' : ''));
       block.textContent = event.title;
-      block.setAttribute('tabindex', '0');
-      block.setAttribute('role', 'button');
-      block.addEventListener('click', () => {
-        if (config.onEventClick) {
-          const result = config.onEventClick(event, 'week');
-          if (result === false) return;
-        }
-        setEventDetail(event.id);
-      });
-      block.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          if (config.onEventClick) {
-            const result = config.onEventClick(event, 'week');
-            if (result === false) return;
-          }
-          setEventDetail(event.id);
-        }
-      });
+      bindEventClick(block, event, 'week', config);
       col.appendChild(block);
     }
 
