@@ -2868,16 +2868,27 @@ ${text}</tr>
     };
   }
   function extractDirectives(description) {
-    if (!description) return { tokens: [], description };
+    if (!description) return { tokens: [], description, featured: false, hidden: false };
     description = description.replace(/&amp;/g, "&");
     const tokens = [];
     const seen = /* @__PURE__ */ new Set();
     let cleaned = description;
+    let featured = false;
+    let hidden = false;
     const matches = [...description.matchAll(DIRECTIVE_PATTERN)];
     for (const match of matches) {
       const fullMatch = match[0];
       const body = match[1];
       cleaned = stripUrl(cleaned, fullMatch);
+      const bodyLower = body.toLowerCase();
+      if (bodyLower === "featured") {
+        featured = true;
+        continue;
+      }
+      if (bodyLower === "hidden") {
+        hidden = true;
+        continue;
+      }
       const token = parseDirective(body);
       if (!token) continue;
       if (!seen.has(token.canonicalId)) {
@@ -2886,7 +2897,7 @@ ${text}</tr>
       }
     }
     cleaned = cleanupHtml(cleaned);
-    return { tokens, description: cleaned };
+    return { tokens, description: cleaned, featured, hidden };
   }
 
   // src/data.js
@@ -2923,11 +2934,15 @@ ${text}</tr>
     let image = event.image || null;
     let images = event.images && event.images.length > 0 ? event.images : [];
     let links = event.links && event.links.length > 0 ? event.links : [];
+    let featured = event.featured || false;
+    let hidden = event.hidden || false;
     const tokenSet = new TokenSet();
     if (description) {
       const result = extractDirectives(description);
       description = result.description;
       tokenSet.addAll(result.tokens);
+      if (result.featured) featured = true;
+      if (result.hidden) hidden = true;
     }
     if (images.length === 0 && description) {
       const result = extractImageTokens(description, config);
@@ -2990,7 +3005,7 @@ ${text}</tr>
     ];
     const descriptionFormat = event.descriptionFormat || detectFormat(description);
     const { _imageAttachments, ...rest } = event;
-    return { ...rest, description, descriptionFormat, image, images, links, attachments, tags };
+    return { ...rest, description, descriptionFormat, image, images, links, attachments, tags, featured, hidden };
   }
   async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -3053,6 +3068,10 @@ ${text}</tr>
     return `${prefix}-view`;
   }
   function parseHash() {
+    const pathMatch = window.location.pathname.match(/\/event\/([^/]+)\/?$/);
+    if (pathMatch) {
+      return { view: "detail", eventId: decodeURIComponent(pathMatch[1]) };
+    }
     const hash = window.location.hash.slice(1);
     if (!hash) return null;
     if (hash.startsWith("event/")) {
@@ -3067,6 +3086,9 @@ ${text}</tr>
     return null;
   }
   function getInitialView(defaultView, enabledViews, config) {
+    if (config && config.initialEvent) {
+      return { view: "detail", eventId: config.initialEvent };
+    }
     const fromHash = parseHash();
     if (fromHash) return fromHash;
     const key = storageKey(config);
@@ -3295,6 +3317,70 @@ ${text}</tr>
     return names;
   }
 
+  // src/views/helpers.js
+  function createElement(tag2, className, attrs) {
+    const el = document.createElement(tag2);
+    if (className) el.className = className;
+    if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) {
+        el.setAttribute(key, value);
+      }
+    }
+    return el;
+  }
+  function bindEventClick(el, event, viewName, config) {
+    function handleClick() {
+      if (config.onEventClick) {
+        const result = config.onEventClick(event, viewName);
+        if (result === false) return;
+      }
+      setEventDetail(event.id);
+    }
+    el.addEventListener("click", handleClick);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleClick();
+      }
+    });
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "button");
+  }
+  function applyEventClasses(el, event, baseClass) {
+    let cls = baseClass;
+    if (isPast(event.start)) cls += ` ${baseClass}--past`;
+    if (event.featured) cls += ` ${baseClass}--featured`;
+    el.className = cls;
+  }
+  function createEventImage(event, className) {
+    const wrapper = createElement("div", className);
+    const img = document.createElement("img");
+    img.src = event.image;
+    img.alt = event.title;
+    img.setAttribute("loading", "lazy");
+    img.onerror = () => {
+      wrapper.style.display = "none";
+    };
+    wrapper.appendChild(img);
+    return wrapper;
+  }
+  function filterHidden(events) {
+    return events.filter((e) => !e.hidden);
+  }
+  function sortFeatured(events) {
+    return [...events].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+  }
+  function sortFeaturedByDate(events, timezone, locale) {
+    const dateKey = (e) => {
+      const p = getDatePartsInTz(e.start, timezone, locale);
+      return `${p.year}-${p.month}-${p.day}`;
+    };
+    return [...events].sort((a, b) => {
+      if (dateKey(a) !== dateKey(b)) return 0;
+      return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+    });
+  }
+
   // src/views/month.js
   function renderMonthView(container, events, timezone, currentDate, config) {
     config = config || {};
@@ -3303,6 +3389,7 @@ ${text}</tr>
     const maxEventsPerDay = config.maxEventsPerDay || 3;
     const i18n = config.i18n || {};
     const moreEventsTemplate = i18n.moreEvents || "+{count} more";
+    events = filterHidden(events);
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -3316,62 +3403,51 @@ ${text}</tr>
       if (!eventsByDate[key]) eventsByDate[key] = [];
       eventsByDate[key].push(event);
     }
-    const grid = document.createElement("div");
-    grid.className = "ogcal-month";
-    const nav = document.createElement("div");
-    nav.className = "ogcal-month-nav";
-    nav.innerHTML = `
-    <button class="ogcal-month-prev" aria-label="Previous month">\u2039</button>
-    <span class="ogcal-month-title">${monthName}</span>
-    <button class="ogcal-month-next" aria-label="Next month">\u203A</button>
-  `;
-    nav.querySelector(".ogcal-month-prev").addEventListener("click", () => {
-      const prev = new Date(year, month - 1, 1);
-      renderMonthView(container, events, timezone, prev, config);
+    const grid = createElement("div", "ogcal-month");
+    const nav = createElement("div", "ogcal-month-nav");
+    const prevBtn = createElement("button", "ogcal-month-prev", { "aria-label": "Previous month" });
+    prevBtn.textContent = "\u2039";
+    prevBtn.addEventListener("click", () => {
+      renderMonthView(container, events, timezone, new Date(year, month - 1, 1), config);
     });
-    nav.querySelector(".ogcal-month-next").addEventListener("click", () => {
-      const next = new Date(year, month + 1, 1);
-      renderMonthView(container, events, timezone, next, config);
+    nav.appendChild(prevBtn);
+    const title = createElement("span", "ogcal-month-title");
+    title.textContent = `${monthName} ${year}`;
+    nav.appendChild(title);
+    const nextBtn = createElement("button", "ogcal-month-next", { "aria-label": "Next month" });
+    nextBtn.textContent = "\u203A";
+    nextBtn.addEventListener("click", () => {
+      renderMonthView(container, events, timezone, new Date(year, month + 1, 1), config);
     });
+    nav.appendChild(nextBtn);
     grid.appendChild(nav);
-    const headerRow = document.createElement("div");
-    headerRow.className = "ogcal-month-header";
-    headerRow.setAttribute("role", "row");
+    const headerRow = createElement("div", "ogcal-month-header", { role: "row" });
     for (const name of dayNames) {
-      const cell = document.createElement("div");
-      cell.className = "ogcal-month-dayname";
+      const cell = createElement("div", "ogcal-month-dayname");
       cell.textContent = name;
       headerRow.appendChild(cell);
     }
     grid.appendChild(headerRow);
-    const body = document.createElement("div");
-    body.className = "ogcal-month-body";
-    body.setAttribute("role", "grid");
-    let row = document.createElement("div");
-    row.className = "ogcal-month-row";
-    row.setAttribute("role", "row");
+    const body = createElement("div", "ogcal-month-body", { role: "grid" });
+    let row = createElement("div", "ogcal-month-row", { role: "row" });
     for (let i = 0; i < firstDay; i++) {
-      const cell = document.createElement("div");
-      cell.className = "ogcal-month-cell ogcal-month-cell--empty";
-      cell.setAttribute("role", "gridcell");
-      row.appendChild(cell);
+      row.appendChild(createElement("div", "ogcal-month-cell ogcal-month-cell--empty", { role: "gridcell" }));
     }
-    for (let day = 1; day <= daysInMonth; day++) {
-      const cellDate = new Date(year, month, day);
-      const key = `${year}-${month}-${day}`;
-      const dayEvents = eventsByDate[key] || [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cellDate = new Date(year, month, d);
+      const key = `${year}-${month}-${d}`;
+      const dayEvents = sortFeatured(eventsByDate[key] || []);
       const today = isToday(cellDate);
-      const cell = document.createElement("div");
+      const cell = createElement("div", null, { role: "gridcell" });
       cell.className = "ogcal-month-cell" + (today ? " ogcal-month-cell--today" : "") + (dayEvents.length ? " ogcal-month-cell--has-events" : "");
-      cell.setAttribute("role", "gridcell");
-      const dayNum = document.createElement("div");
-      dayNum.className = "ogcal-month-day";
-      dayNum.textContent = day;
+      const dayNum = createElement("div", "ogcal-month-day");
+      dayNum.textContent = d;
       cell.appendChild(dayNum);
       for (const event of dayEvents.slice(0, maxEventsPerDay)) {
-        const chip = document.createElement("div");
-        chip.className = "ogcal-month-chip";
+        const chip = createElement("div", "ogcal-month-chip" + (event.featured ? " ogcal-month-chip--featured" : ""));
         chip.textContent = event.title;
+        chip.setAttribute("tabindex", "0");
+        chip.setAttribute("role", "button");
         chip.addEventListener("click", (e) => {
           e.stopPropagation();
           if (config.onEventClick) {
@@ -3380,29 +3456,34 @@ ${text}</tr>
           }
           setEventDetail(event.id);
         });
+        chip.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (config.onEventClick) {
+              const result = config.onEventClick(event, "month");
+              if (result === false) return;
+            }
+            setEventDetail(event.id);
+          }
+        });
         cell.appendChild(chip);
       }
       if (dayEvents.length > maxEventsPerDay) {
-        const more = document.createElement("div");
-        more.className = "ogcal-month-more";
+        const more = createElement("div", "ogcal-month-more");
         more.textContent = moreEventsTemplate.replace("{count}", dayEvents.length - maxEventsPerDay);
         cell.appendChild(more);
       }
       row.appendChild(cell);
-      if ((firstDay + day) % 7 === 0) {
+      if ((firstDay + d) % 7 === 0) {
         body.appendChild(row);
-        row = document.createElement("div");
-        row.className = "ogcal-month-row";
-        row.setAttribute("role", "row");
+        row = createElement("div", "ogcal-month-row", { role: "row" });
       }
     }
     const remaining = (firstDay + daysInMonth) % 7;
     if (remaining > 0) {
       for (let i = remaining; i < 7; i++) {
-        const cell = document.createElement("div");
-        cell.className = "ogcal-month-cell ogcal-month-cell--empty";
-        cell.setAttribute("role", "gridcell");
-        row.appendChild(cell);
+        row.appendChild(createElement("div", "ogcal-month-cell ogcal-month-cell--empty", { role: "gridcell" }));
       }
       body.appendChild(row);
     }
@@ -3417,46 +3498,51 @@ ${text}</tr>
     const locale = config.locale;
     const weekStartDay = config.weekStartDay || 0;
     const dates = getWeekDates(currentDate, weekStartDay);
-    const week = document.createElement("div");
-    week.className = "ogcal-week";
-    const nav = document.createElement("div");
-    nav.className = "ogcal-week-nav";
+    events = filterHidden(events);
+    const week = createElement("div", "ogcal-week");
+    const nav = createElement("div", "ogcal-week-nav");
     const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
     const endLabel = formatDateShort(dates[6].toISOString(), timezone, locale);
-    nav.innerHTML = `
-    <button class="ogcal-week-prev" aria-label="Previous week">\u2039</button>
-    <span class="ogcal-week-title">${startLabel} \u2013 ${endLabel}</span>
-    <button class="ogcal-week-next" aria-label="Next week">\u203A</button>
-  `;
-    nav.querySelector(".ogcal-week-prev").addEventListener("click", () => {
+    const prevBtn = createElement("button", "ogcal-week-prev", { "aria-label": "Previous week" });
+    prevBtn.textContent = "\u2039";
+    prevBtn.addEventListener("click", () => {
       const prev = new Date(currentDate);
       prev.setDate(prev.getDate() - 7);
       renderWeekView(container, events, timezone, prev, config);
     });
-    nav.querySelector(".ogcal-week-next").addEventListener("click", () => {
+    nav.appendChild(prevBtn);
+    const title = createElement("span", "ogcal-week-title");
+    title.textContent = `${startLabel} \u2013 ${endLabel}`;
+    nav.appendChild(title);
+    const nextBtn = createElement("button", "ogcal-week-next", { "aria-label": "Next week" });
+    nextBtn.textContent = "\u203A";
+    nextBtn.addEventListener("click", () => {
       const next = new Date(currentDate);
       next.setDate(next.getDate() + 7);
       renderWeekView(container, events, timezone, next, config);
     });
+    nav.appendChild(nextBtn);
     week.appendChild(nav);
-    const columns = document.createElement("div");
-    columns.className = "ogcal-week-columns";
+    const columns = createElement("div", "ogcal-week-columns");
     for (const date of dates) {
-      const col = document.createElement("div");
-      col.className = "ogcal-week-col" + (isToday(date) ? " ogcal-week-col--today" : "");
-      const header = document.createElement("div");
-      header.className = "ogcal-week-col-header";
+      const col = createElement("div", "ogcal-week-col" + (isToday(date) ? " ogcal-week-col--today" : ""));
+      const header = createElement("div", "ogcal-week-col-header");
       const dayName = new Intl.DateTimeFormat(locale || "en-US", { weekday: "short" }).format(date);
-      header.innerHTML = `<span class="ogcal-week-dayname">${dayName}</span><span class="ogcal-week-daynum">${date.getDate()}</span>`;
+      const dayNameEl = createElement("span", "ogcal-week-dayname");
+      dayNameEl.textContent = dayName;
+      header.appendChild(dayNameEl);
+      const dayNumEl = createElement("span", "ogcal-week-daynum");
+      dayNumEl.textContent = date.getDate();
+      header.appendChild(dayNumEl);
       col.appendChild(header);
-      const dayEvents = events.filter((e) => {
+      const dayEvents = sortFeatured(events.filter((e) => {
         const parts = getDatePartsInTz(e.start, timezone, locale);
         return parts.year === date.getFullYear() && parts.month === date.getMonth() && parts.day === date.getDate();
-      });
+      }));
       for (const event of dayEvents) {
-        const block2 = document.createElement("div");
-        block2.className = "ogcal-week-event";
+        const block2 = createElement("div", "ogcal-week-event" + (event.featured ? " ogcal-week-event--featured" : ""));
         block2.textContent = event.title;
+        block2.setAttribute("tabindex", "0");
         block2.addEventListener("click", () => {
           if (config.onEventClick) {
             const result = config.onEventClick(event, "week");
@@ -3464,7 +3550,16 @@ ${text}</tr>
           }
           setEventDetail(event.id);
         });
-        block2.setAttribute("tabindex", "0");
+        block2.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (config.onEventClick) {
+              const result = config.onEventClick(event, "week");
+              if (result === false) return;
+            }
+            setEventDetail(event.id);
+          }
+        });
         col.appendChild(block2);
       }
       columns.appendChild(col);
@@ -3481,52 +3576,54 @@ ${text}</tr>
     const i18n = config.i18n || {};
     const allDayLabel = i18n.allDay || "All Day";
     const noEventsLabel = i18n.noEventsThisDay || "No events this day.";
-    const day = document.createElement("div");
-    day.className = "ogcal-day";
-    const nav = document.createElement("div");
-    nav.className = "ogcal-day-nav";
-    nav.innerHTML = `
-    <button class="ogcal-day-prev" aria-label="Previous day">\u2039</button>
-    <span class="ogcal-day-title">${formatDate(currentDate.toISOString(), timezone, locale)}</span>
-    <button class="ogcal-day-next" aria-label="Next day">\u203A</button>
-  `;
-    nav.querySelector(".ogcal-day-prev").addEventListener("click", () => {
+    events = filterHidden(events);
+    const day = createElement("div", "ogcal-day");
+    const nav = createElement("div", "ogcal-day-nav");
+    const prevBtn = createElement("button", "ogcal-day-prev", { "aria-label": "Previous day" });
+    prevBtn.textContent = "\u2039";
+    prevBtn.addEventListener("click", () => {
       const prev = new Date(currentDate);
       prev.setDate(prev.getDate() - 1);
       renderDayView(container, events, timezone, prev, config);
     });
-    nav.querySelector(".ogcal-day-next").addEventListener("click", () => {
+    nav.appendChild(prevBtn);
+    const title = createElement("span", "ogcal-day-title");
+    title.textContent = formatDate(currentDate.toISOString(), timezone, locale);
+    nav.appendChild(title);
+    const nextBtn = createElement("button", "ogcal-day-next", { "aria-label": "Next day" });
+    nextBtn.textContent = "\u203A";
+    nextBtn.addEventListener("click", () => {
       const next = new Date(currentDate);
       next.setDate(next.getDate() + 1);
       renderDayView(container, events, timezone, next, config);
     });
+    nav.appendChild(nextBtn);
     day.appendChild(nav);
-    const dayEvents = events.filter((e) => isSameDay(new Date(e.start), currentDate));
+    const parseEventDate = (start) => /^\d{4}-\d{2}-\d{2}$/.test(start) ? /* @__PURE__ */ new Date(`${start}T00:00:00`) : new Date(start);
+    let dayEvents = events.filter((e) => isSameDay(parseEventDate(e.start), currentDate));
+    dayEvents = sortFeatured(dayEvents);
     if (dayEvents.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "ogcal-day-empty";
+      const empty = createElement("div", "ogcal-day-empty");
       empty.textContent = noEventsLabel;
       day.appendChild(empty);
     } else {
       for (const event of dayEvents) {
-        const item = document.createElement("div");
-        item.className = "ogcal-day-event";
-        item.addEventListener("click", () => {
-          if (config.onEventClick) {
-            const result = config.onEventClick(event, "day");
-            if (result === false) return;
-          }
-          setEventDetail(event.id);
-        });
-        item.setAttribute("tabindex", "0");
-        const timeStr = event.allDay ? allDayLabel : formatTime(event.start, timezone, locale);
-        item.innerHTML = `
-        <div class="ogcal-day-event-time">${timeStr}</div>
-        <div class="ogcal-day-event-info">
-          <div class="ogcal-day-event-title">${escapeHtml(event.title)}</div>
-          ${event.location ? `<div class="ogcal-day-event-location">${escapeHtml(event.location)}</div>` : ""}
-        </div>
-      `;
+        const item = createElement("div");
+        applyEventClasses(item, event, "ogcal-day-event");
+        bindEventClick(item, event, "day", config);
+        const timeEl = createElement("div", "ogcal-day-event-time");
+        timeEl.textContent = event.allDay ? allDayLabel : formatTime(event.start, timezone, locale);
+        item.appendChild(timeEl);
+        const info = createElement("div", "ogcal-day-event-info");
+        const titleEl = createElement("div", "ogcal-day-event-title");
+        titleEl.textContent = event.title;
+        info.appendChild(titleEl);
+        if (event.location) {
+          const loc = createElement("div", "ogcal-day-event-location");
+          loc.textContent = event.location;
+          info.appendChild(loc);
+        }
+        item.appendChild(info);
         day.appendChild(item);
       }
     }
@@ -3538,43 +3635,31 @@ ${text}</tr>
   function renderGridView(container, events, timezone, config) {
     config = config || {};
     const locale = config.locale;
-    const i18n = config.i18n || {};
-    const allDayLabel = i18n.allDay || "All Day";
-    const grid = document.createElement("div");
-    grid.className = "ogcal-grid";
+    events = filterHidden(events);
+    events = sortFeaturedByDate(events, timezone, locale);
+    const grid = createElement("div", "ogcal-grid");
     for (const event of events) {
-      const card = document.createElement("div");
-      card.className = "ogcal-grid-card" + (isPast(event.start) ? " ogcal-grid-card--past" : "");
-      card.addEventListener("click", () => {
-        if (config.onEventClick) {
-          const result = config.onEventClick(event, "grid");
-          if (result === false) return;
-        }
-        setEventDetail(event.id);
-      });
-      card.setAttribute("tabindex", "0");
-      card.setAttribute("role", "button");
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          if (config.onEventClick) {
-            const result = config.onEventClick(event, "grid");
-            if (result === false) return;
-          }
-          setEventDetail(event.id);
-        }
-      });
+      const card = createElement("div");
+      applyEventClasses(card, event, "ogcal-grid-card");
+      bindEventClick(card, event, "grid", config);
+      if (event.image) {
+        card.appendChild(createEventImage(event, "ogcal-grid-image"));
+      }
+      const body = createElement("div", "ogcal-grid-body");
+      const title = createElement("div", "ogcal-grid-title");
+      title.textContent = event.title;
+      body.appendChild(title);
       const dateStr = formatDateShort(event.start, timezone, locale);
       const timeStr = event.allDay ? "" : ` \xB7 ${formatTime(event.start, timezone, locale)}`;
-      const imageHtml = event.image ? `<div class="ogcal-grid-image"><img src="${event.image}" alt="${escapeHtml(event.title)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : "";
-      card.innerHTML = `
-      ${imageHtml}
-      <div class="ogcal-grid-body">
-        <div class="ogcal-grid-title">${escapeHtml(event.title)}</div>
-        <div class="ogcal-grid-meta">${dateStr}${timeStr}</div>
-        ${event.location ? `<div class="ogcal-grid-location">${escapeHtml(event.location)}</div>` : ""}
-      </div>
-    `;
+      const meta = createElement("div", "ogcal-grid-meta");
+      meta.textContent = `${dateStr}${timeStr}`;
+      body.appendChild(meta);
+      if (event.location) {
+        const loc = createElement("div", "ogcal-grid-location");
+        loc.textContent = event.location;
+        body.appendChild(loc);
+      }
+      card.appendChild(body);
       grid.appendChild(card);
     }
     container.innerHTML = "";
@@ -3587,42 +3672,31 @@ ${text}</tr>
     const locale = config.locale;
     const i18n = config.i18n || {};
     const allDayLabel = i18n.allDay || "All Day";
-    const list2 = document.createElement("div");
-    list2.className = "ogcal-list";
+    events = filterHidden(events);
+    events = sortFeaturedByDate(events, timezone, locale);
+    const list2 = createElement("div", "ogcal-list");
     for (const event of events) {
-      const item = document.createElement("div");
-      item.className = "ogcal-list-item" + (isPast(event.start) ? " ogcal-list-item--past" : "");
-      item.addEventListener("click", () => {
-        if (config.onEventClick) {
-          const result = config.onEventClick(event, "list");
-          if (result === false) return;
-        }
-        setEventDetail(event.id);
-      });
-      item.setAttribute("tabindex", "0");
-      item.setAttribute("role", "button");
-      item.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          if (config.onEventClick) {
-            const result = config.onEventClick(event, "list");
-            if (result === false) return;
-          }
-          setEventDetail(event.id);
-        }
-      });
-      const dateStr = formatDate(event.start, timezone, locale);
-      const timeStr = event.allDay ? allDayLabel : formatTime(event.start, timezone, locale);
-      item.innerHTML = `
-      <div class="ogcal-list-date">
-        <div class="ogcal-list-date-day">${dateStr}</div>
-        <div class="ogcal-list-date-time">${timeStr}</div>
-      </div>
-      <div class="ogcal-list-info">
-        <div class="ogcal-list-title">${escapeHtml(event.title)}</div>
-        ${event.location ? `<div class="ogcal-list-location">${escapeHtml(event.location)}</div>` : ""}
-      </div>
-    `;
+      const item = createElement("div");
+      applyEventClasses(item, event, "ogcal-list-item");
+      bindEventClick(item, event, "list", config);
+      const dateCol = createElement("div", "ogcal-list-date");
+      const dateDay = createElement("div", "ogcal-list-date-day");
+      dateDay.textContent = formatDate(event.start, timezone, locale);
+      dateCol.appendChild(dateDay);
+      const dateTime = createElement("div", "ogcal-list-date-time");
+      dateTime.textContent = event.allDay ? allDayLabel : formatTime(event.start, timezone, locale);
+      dateCol.appendChild(dateTime);
+      item.appendChild(dateCol);
+      const info = createElement("div", "ogcal-list-info");
+      const title = createElement("div", "ogcal-list-title");
+      title.textContent = event.title;
+      info.appendChild(title);
+      if (event.location) {
+        const loc = createElement("div", "ogcal-list-location");
+        loc.textContent = event.location;
+        info.appendChild(loc);
+      }
+      item.appendChild(info);
       list2.appendChild(item);
     }
     container.innerHTML = "";
@@ -3631,8 +3705,7 @@ ${text}</tr>
 
   // src/views/detail.js
   function renderGallery(images, altText) {
-    const gallery = document.createElement("div");
-    gallery.className = "ogcal-detail-gallery";
+    const gallery = createElement("div", "ogcal-detail-gallery");
     let loadedImages = [...images];
     let current = 0;
     let counter = null;
@@ -3653,19 +3726,14 @@ ${text}</tr>
     };
     gallery.appendChild(imgEl);
     if (images.length <= 1) return gallery;
-    counter = document.createElement("div");
-    counter.className = "ogcal-detail-gallery-counter";
+    counter = createElement("div", "ogcal-detail-gallery-counter");
     counter.textContent = `1 / ${images.length}`;
     gallery.appendChild(counter);
-    const prevBtn = document.createElement("button");
-    prevBtn.className = "ogcal-detail-gallery-prev";
-    prevBtn.innerHTML = "&#8249;";
-    prevBtn.setAttribute("aria-label", "Previous image");
+    const prevBtn = createElement("button", "ogcal-detail-gallery-prev", { "aria-label": "Previous image" });
+    prevBtn.textContent = "\u2039";
     gallery.appendChild(prevBtn);
-    const nextBtn = document.createElement("button");
-    nextBtn.className = "ogcal-detail-gallery-next";
-    nextBtn.innerHTML = "&#8250;";
-    nextBtn.setAttribute("aria-label", "Next image");
+    const nextBtn = createElement("button", "ogcal-detail-gallery-next", { "aria-label": "Next image" });
+    nextBtn.textContent = "\u203A";
     gallery.appendChild(nextBtn);
     function goTo(idx) {
       current = (idx + loadedImages.length) % loadedImages.length;
@@ -3695,34 +3763,33 @@ ${text}</tr>
     const locationTemplate = config.locationLinkTemplate || "https://maps.google.com/?q={location}";
     const images = event.images && event.images.length > 0 ? event.images : event.image ? [event.image] : [];
     const hasImages = images.length > 0;
-    const detail = document.createElement("div");
-    detail.className = "ogcal-detail";
-    const backBtn = document.createElement("button");
-    backBtn.className = "ogcal-detail-back";
+    const detail = createElement("div", "ogcal-detail");
+    const backBtn = createElement("button", "ogcal-detail-back");
     backBtn.textContent = backLabel;
     backBtn.addEventListener("click", onBack);
     detail.appendChild(backBtn);
-    const body = document.createElement("div");
-    body.className = hasImages ? "ogcal-detail-body ogcal-detail-body--has-image" : "ogcal-detail-body";
+    const body = createElement("div", hasImages ? "ogcal-detail-body ogcal-detail-body--has-image" : "ogcal-detail-body");
     if (hasImages) {
-      const galleryCol = document.createElement("div");
-      galleryCol.className = "ogcal-detail-image";
-      galleryCol.appendChild(renderGallery(images, escapeHtml(event.title)));
+      const galleryCol = createElement("div", "ogcal-detail-image");
+      galleryCol.appendChild(renderGallery(images, event.title));
       body.appendChild(galleryCol);
     }
-    const content = document.createElement("div");
-    content.className = "ogcal-detail-content";
-    const title = document.createElement("h2");
-    title.className = "ogcal-detail-title";
-    title.textContent = event.title;
-    content.appendChild(title);
-    const meta = document.createElement("div");
-    meta.className = "ogcal-detail-meta";
+    const content = createElement("div", "ogcal-detail-content");
+    const titleEl = createElement("h2", "ogcal-detail-title");
+    titleEl.textContent = event.title;
+    content.appendChild(titleEl);
+    const meta = createElement("div", "ogcal-detail-meta");
     const dateStr = event.allDay ? formatDate(event.start, timezone, locale) : formatDatetime(event.start, timezone, locale);
-    meta.innerHTML = `<div class="ogcal-detail-date">${dateStr}</div>`;
+    const dateDiv = createElement("div", "ogcal-detail-date");
+    dateDiv.textContent = dateStr;
+    meta.appendChild(dateDiv);
     if (event.location) {
       const mapsUrl = locationTemplate.replace("{location}", encodeURIComponent(event.location));
-      meta.innerHTML += `<div class="ogcal-detail-location"><a href="${mapsUrl}" target="_blank" rel="noopener">${escapeHtml(event.location)}</a></div>`;
+      const locDiv = createElement("div", "ogcal-detail-location");
+      const locLink = createElement("a", null, { href: mapsUrl, target: "_blank", rel: "noopener" });
+      locLink.textContent = event.location;
+      locDiv.appendChild(locLink);
+      meta.appendChild(locDiv);
     }
     content.appendChild(meta);
     const scalarAndTextTags = (event.tags || []).filter((t) => {
@@ -3731,31 +3798,23 @@ ${text}</tr>
       return false;
     });
     if (scalarAndTextTags.length > 0) {
-      const tagsDiv = document.createElement("div");
-      tagsDiv.className = "ogcal-detail-tags";
+      const tagsDiv = createElement("div", "ogcal-detail-tags");
       for (const tag2 of scalarAndTextTags) {
-        const span = document.createElement("span");
-        span.className = "ogcal-detail-tag";
+        const span = createElement("span", "ogcal-detail-tag");
         span.textContent = tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
         tagsDiv.appendChild(span);
       }
       content.appendChild(tagsDiv);
     }
     if (event.description) {
-      const desc = document.createElement("div");
-      desc.className = "ogcal-detail-description";
+      const desc = createElement("div", "ogcal-detail-description");
       desc.innerHTML = renderDescription(event.description, config);
       content.appendChild(desc);
     }
     if (event.attachments && event.attachments.length > 0) {
-      const attachDiv = document.createElement("div");
-      attachDiv.className = "ogcal-detail-attachments";
+      const attachDiv = createElement("div", "ogcal-detail-attachments");
       for (const att of event.attachments) {
-        const a = document.createElement("a");
-        a.className = "ogcal-detail-attachment";
-        a.href = att.url;
-        a.target = "_blank";
-        a.rel = "noopener";
+        const a = createElement("a", "ogcal-detail-attachment", { href: att.url, target: "_blank", rel: "noopener" });
         a.textContent = att.label;
         attachDiv.appendChild(a);
       }
@@ -3765,14 +3824,9 @@ ${text}</tr>
     const titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
     const allLinks = [...event.links || [], ...urlTags.map((t) => ({ label: titleCase(t.key), url: t.value }))];
     if (allLinks.length > 0) {
-      const linksDiv = document.createElement("div");
-      linksDiv.className = "ogcal-detail-links";
+      const linksDiv = createElement("div", "ogcal-detail-links");
       for (const link2 of allLinks) {
-        const a = document.createElement("a");
-        a.className = "ogcal-detail-link";
-        a.href = link2.url;
-        a.target = "_blank";
-        a.rel = "noopener";
+        const a = createElement("a", "ogcal-detail-link", { href: link2.url, target: "_blank", rel: "noopener" });
         a.textContent = link2.label;
         linksDiv.appendChild(a);
       }
@@ -3853,6 +3907,73 @@ ${text}</tr>
     container.appendChild(header);
   }
 
+  // src/ui/tag-filter.js
+  function createTagFilter(onFilterChange) {
+    const selectedTags = /* @__PURE__ */ new Set();
+    function getTagLabel(tag2) {
+      return tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
+    }
+    function render(container, events) {
+      const tagCounts = /* @__PURE__ */ new Map();
+      for (const event of events) {
+        for (const tag2 of event.tags || []) {
+          if (tag2.key !== "tag" && tag2.value && tag2.value.startsWith("http")) continue;
+          const label = getTagLabel(tag2);
+          tagCounts.set(label, (tagCounts.get(label) || 0) + 1);
+        }
+      }
+      if (tagCounts.size === 0) {
+        container.innerHTML = "";
+        return;
+      }
+      const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+      const bar = document.createElement("div");
+      bar.className = "ogcal-tag-filter";
+      for (const [label] of sortedTags) {
+        const pill = document.createElement("button");
+        pill.className = "ogcal-tag-pill" + (selectedTags.has(label) ? " ogcal-tag-pill--active" : "");
+        pill.textContent = label;
+        pill.addEventListener("click", () => {
+          if (selectedTags.has(label)) {
+            selectedTags.delete(label);
+          } else {
+            selectedTags.add(label);
+          }
+          render(container, events);
+          onFilterChange();
+        });
+        bar.appendChild(pill);
+      }
+      if (selectedTags.size > 0) {
+        const clear = document.createElement("button");
+        clear.className = "ogcal-tag-clear";
+        clear.textContent = "Clear";
+        clear.addEventListener("click", () => {
+          selectedTags.clear();
+          render(container, events);
+          onFilterChange();
+        });
+        bar.appendChild(clear);
+      }
+      container.innerHTML = "";
+      container.appendChild(bar);
+    }
+    function getFilter() {
+      if (selectedTags.size === 0) return null;
+      return (event) => {
+        for (const tag2 of event.tags || []) {
+          const label = getTagLabel(tag2);
+          if (selectedTags.has(label)) return true;
+        }
+        return false;
+      };
+    }
+    function getSelectedTags() {
+      return new Set(selectedTags);
+    }
+    return { render, getFilter, getSelectedTags };
+  }
+
   // src/og-cal.js
   var DEFAULTS = {
     defaultView: "month",
@@ -3892,7 +4013,8 @@ ${text}</tr>
     renderEmpty: null,
     renderLoading: null,
     renderError: null,
-    i18n: {}
+    i18n: {},
+    initialEvent: null
   };
   var I18N_DEFAULTS = {
     viewLabels: { month: "Month", week: "Week", day: "Day", grid: "Grid", list: "List" },
@@ -3905,7 +4027,8 @@ ${text}</tr>
     noEventsThisDay: "No events this day.",
     back: "\u2190 Back",
     moreEvents: "+{count} more",
-    subscribe: "Subscribe"
+    subscribe: "Subscribe",
+    clearFilter: "Clear"
   };
   var THEME_DEFAULTS = {
     primary: "#8B4513",
@@ -3939,6 +4062,8 @@ ${text}</tr>
     headerContainer.className = "ogcal-header-container";
     const selectorContainer = document.createElement("div");
     selectorContainer.className = "ogcal-selector-container";
+    const tagFilterContainer = document.createElement("div");
+    tagFilterContainer.className = "ogcal-tag-filter-container";
     const viewContainer = document.createElement("div");
     viewContainer.className = "ogcal-view-container";
     viewContainer.setAttribute("aria-live", "polite");
@@ -3947,13 +4072,56 @@ ${text}</tr>
     el.innerHTML = "";
     el.appendChild(headerContainer);
     el.appendChild(selectorContainer);
+    el.appendChild(tagFilterContainer);
     el.appendChild(viewContainer);
     el.appendChild(toggleContainer);
     let data = null;
     let showPast = config.showPastEvents;
     let currentDate = /* @__PURE__ */ new Date();
     let lastView = null;
+    let lastViewState = null;
+    const tagFilter = createTagFilter(() => {
+      if (lastViewState) renderView(lastViewState);
+    });
     const isMobile = () => window.innerWidth < config.mobileBreakpoint;
+    let originalMeta = null;
+    function captureOriginalMeta() {
+      originalMeta = {};
+      for (const prop of ["og:title", "og:description", "og:image", "og:url"]) {
+        const el2 = document.querySelector(`meta[property="${prop}"]`);
+        originalMeta[prop] = el2 ? el2.getAttribute("content") : null;
+      }
+    }
+    function setMetaTag(property, content) {
+      let el2 = document.querySelector(`meta[property="${property}"]`);
+      if (!el2) {
+        el2 = document.createElement("meta");
+        el2.setAttribute("property", property);
+        document.head.appendChild(el2);
+      }
+      el2.setAttribute("content", content);
+    }
+    function setEventMeta(event) {
+      const tz = data?.calendar?.timezone || "UTC";
+      const dateStr = event.allDay ? formatDate(event.start, tz, config.locale) : formatDatetime(event.start, tz, config.locale);
+      const descParts = [dateStr];
+      if (event.location) descParts.push(event.location);
+      setMetaTag("og:title", event.title);
+      setMetaTag("og:description", descParts.join(" \xB7 "));
+      if (event.image) setMetaTag("og:image", event.image);
+      setMetaTag("og:url", window.location.href);
+    }
+    function restoreOriginalMeta() {
+      if (!originalMeta) return;
+      for (const [prop, content] of Object.entries(originalMeta)) {
+        if (content === null) {
+          const el2 = document.querySelector(`meta[property="${prop}"]`);
+          if (el2) el2.remove();
+        } else {
+          setMetaTag(prop, content);
+        }
+      }
+    }
     function getFilteredEvents() {
       if (!data) return [];
       if (showPast) return data.events;
@@ -3964,8 +4132,20 @@ ${text}</tr>
       return data.events.some((e) => isPast(e.end || e.start));
     }
     function renderView(viewState) {
-      const events = getFilteredEvents();
+      lastViewState = viewState;
+      const allEvents = getFilteredEvents();
       const timezone = data?.calendar?.timezone || "UTC";
+      const visibleEvents = allEvents.filter((e) => !e.hidden);
+      if (viewState.view !== "detail") {
+        tagFilter.render(tagFilterContainer, visibleEvents);
+      } else {
+        tagFilterContainer.innerHTML = "";
+      }
+      const tagFilterFn = tagFilter.getFilter();
+      const events = tagFilterFn ? visibleEvents.filter(tagFilterFn) : visibleEvents;
+      if (viewState.view !== "detail") {
+        restoreOriginalMeta();
+      }
       if (config.onViewChange && viewState.view !== "detail") {
         const oldView = lastView;
         if (oldView !== viewState.view) {
@@ -4001,6 +4181,7 @@ ${text}</tr>
               const result = config.onEventClick(event, "detail");
               if (result === false) return;
             }
+            setEventMeta(event);
             selectorContainer.innerHTML = "";
             renderDetailView(viewContainer, event, timezone, () => {
               setView(lastView || config.defaultView, config);
@@ -4027,6 +4208,7 @@ ${text}</tr>
       }
     }
     async function start() {
+      captureOriginalMeta();
       renderLoading(viewContainer, config);
       try {
         data = await loadData(config);
