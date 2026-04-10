@@ -123,4 +123,37 @@ describe('renderDetailView', () => {
     assert.strictEqual(title.textContent, '<img onerror=alert(1)>');
     assert.ok(!title.innerHTML.includes('<img'));
   });
+
+  it('shows magnifying glass badge on gallery image', () => {
+    const container = document.createElement('div');
+    const event = { ...baseEvent, image: 'https://a.com/1.jpg', images: ['https://a.com/1.jpg'] };
+    renderDetailView(container, event, 'UTC', () => {}, {});
+    const badge = container.querySelector('.already-detail-gallery-zoom');
+    assert.ok(badge, 'zoom badge should be present');
+  });
+
+  it('opens lightbox when gallery image is clicked', () => {
+    const container = document.createElement('div');
+    const event = { ...baseEvent, image: 'https://a.com/1.jpg', images: ['https://a.com/1.jpg'] };
+    renderDetailView(container, event, 'UTC', () => {}, {});
+    container.querySelector('.already-detail-gallery-img').click();
+    const lightbox = document.querySelector('.already-lightbox');
+    assert.ok(lightbox, 'lightbox should open on image click');
+    // Clean up
+    lightbox.remove();
+  });
+
+  it('opens lightbox at correct index for multi-image gallery', () => {
+    const container = document.createElement('div');
+    const event = { ...baseEvent, images: ['https://a.com/1.jpg', 'https://a.com/2.jpg'], image: 'https://a.com/1.jpg' };
+    renderDetailView(container, event, 'UTC', () => {}, {});
+    // Navigate to second image
+    container.querySelector('.already-detail-gallery-next').click();
+    // Click image to open lightbox
+    container.querySelector('.already-detail-gallery-img').click();
+    const lightboxImg = document.querySelector('.already-lightbox-img');
+    assert.strictEqual(lightboxImg.src, 'https://a.com/2.jpg');
+    // Clean up
+    document.querySelector('.already-lightbox').remove();
+  });
 });
