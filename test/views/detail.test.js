@@ -1,6 +1,6 @@
 // test/views/detail.test.js
 require('../setup-dom.js');
-const { describe, it, before } = require('node:test');
+const { describe, it, before, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { createTestEvent } = require('../helpers.js');
 
@@ -9,6 +9,10 @@ let renderDetailView;
 before(async () => {
   const mod = await import('../../src/views/detail.js');
   renderDetailView = mod.renderDetailView;
+});
+
+afterEach(() => {
+  document.querySelector('.already-lightbox-close')?.click();
 });
 
 describe('renderDetailView', () => {
@@ -139,8 +143,6 @@ describe('renderDetailView', () => {
     container.querySelector('.already-detail-gallery-img').click();
     const lightbox = document.querySelector('.already-lightbox');
     assert.ok(lightbox, 'lightbox should open on image click');
-    // Clean up
-    lightbox.remove();
   });
 
   it('opens lightbox at correct index for multi-image gallery', () => {
@@ -153,7 +155,5 @@ describe('renderDetailView', () => {
     container.querySelector('.already-detail-gallery-img').click();
     const lightboxImg = document.querySelector('.already-lightbox-img');
     assert.strictEqual(lightboxImg.src, 'https://a.com/2.jpg');
-    // Clean up
-    document.querySelector('.already-lightbox').remove();
   });
 });
