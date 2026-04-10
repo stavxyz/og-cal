@@ -766,7 +766,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Lightbox zoom badge on gallery */
+/* Zoom badge on gallery images (indicates lightbox is available) */
 .already-detail-gallery-zoom {
   position: absolute;
   top: 0.5rem;
@@ -783,7 +783,7 @@
   pointer-events: none;
 }
 
-/* Lightbox overlay */
+/* Lightbox overlay — z-index must exceed all other layers */
 .already-lightbox {
   position: fixed;
   inset: 0;
@@ -793,6 +793,7 @@
   align-items: center;
   justify-content: center;
   padding: 2.5rem 1rem;
+  overscroll-behavior: contain;
 }
 
 .already-lightbox-img {
@@ -800,6 +801,7 @@
   max-height: 100%;
   object-fit: contain;
   cursor: zoom-out;
+  touch-action: none;
 }
 
 .already-lightbox-close {
@@ -823,6 +825,13 @@
 
 .already-lightbox-close:hover {
   background: rgba(0, 0, 0, 0.8);
+}
+
+.already-lightbox-close:focus-visible,
+.already-lightbox-prev:focus-visible,
+.already-lightbox-next:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .already-lightbox-prev,
