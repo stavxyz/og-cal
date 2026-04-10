@@ -1,6 +1,7 @@
 import { formatDatetime, formatDate } from '../util/dates.js';
 import { renderDescription } from '../util/description.js';
 import { createElement } from './helpers.js';
+import { openLightbox } from './lightbox.js';
 
 function renderGallery(images, altText) {
   const gallery = createElement('div', 'already-detail-gallery');
@@ -25,6 +26,17 @@ function renderGallery(images, altText) {
     if (counter) counter.textContent = `1 / ${loadedImages.length}`;
   };
   gallery.appendChild(imgEl);
+
+  // Magnifying glass zoom badge
+  const zoomBadge = createElement('div', 'already-detail-gallery-zoom', { 'aria-hidden': 'true' });
+  zoomBadge.textContent = '\u2315';
+  gallery.appendChild(zoomBadge);
+
+  // Click image to open lightbox
+  imgEl.style.cursor = 'zoom-in';
+  imgEl.addEventListener('click', () => {
+    openLightbox(loadedImages, current, altText);
+  });
 
   if (images.length <= 1) return gallery;
 
