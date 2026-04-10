@@ -666,12 +666,14 @@
   align-items: center;
   justify-content: center;
   padding: 2.5rem 1rem;
+  overscroll-behavior: contain;
 }
 .already-lightbox-img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
   cursor: zoom-out;
+  touch-action: none;
 }
 .already-lightbox-close {
   position: absolute;
@@ -693,6 +695,12 @@
 }
 .already-lightbox-close:hover {
   background: rgba(0, 0, 0, 0.8);
+}
+.already-lightbox-close:focus-visible,
+.already-lightbox-prev:focus-visible,
+.already-lightbox-next:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 .already-lightbox-prev,
 .already-lightbox-next {
