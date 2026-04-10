@@ -3677,9 +3677,12 @@ ${text}</tr>
   // src/views/lightbox.js
   var currentClose = null;
   function openLightbox(images, startIndex, altText) {
+    if (!images || images.length === 0) return;
     if (currentClose) currentClose();
     const previousFocus = document.activeElement;
-    let current = startIndex;
+    const savedOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    let current = (startIndex % images.length + images.length) % images.length;
     let counterEl = null;
     const overlay = createElement("div", "already-lightbox", {
       role: "dialog",
@@ -3690,12 +3693,23 @@ ${text}</tr>
     img.className = "already-lightbox-img";
     img.src = images[current];
     img.alt = altText;
+    img.setAttribute("tabindex", "0");
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-label", "Close image viewer");
+    img.onerror = () => {
+      if (images.length > 1) {
+        goTo(current + 1);
+      } else {
+        close();
+      }
+    };
     const closeBtn = createElement("button", "already-lightbox-close", { "aria-label": "Close" });
     closeBtn.textContent = "\xD7";
     function close() {
-      overlay.remove();
       document.removeEventListener("keydown", onKeydown);
       currentClose = null;
+      document.body.style.overflow = savedOverflow;
+      overlay.remove();
       if (previousFocus && previousFocus.focus) previousFocus.focus();
     }
     function goTo(idx) {
@@ -3720,7 +3734,7 @@ ${text}</tr>
         return;
       }
       if (e.key === "Tab") {
-        const focusable = overlay.querySelectorAll("button");
+        const focusable = overlay.querySelectorAll('button, [role="button"]');
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         if (e.shiftKey && document.activeElement === first) {
