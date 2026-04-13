@@ -53,3 +53,28 @@ export function paginateEvents(events, showPast, pageSize, paginationState) {
     remainingPast,
   };
 }
+
+/**
+ * Renders "Show earlier" and "Load more" buttons into the given containers.
+ * Click behavior is provided via callbacks so this stays decoupled from app state.
+ */
+export function renderPaginationButtons(topContainer, bottomContainer, paginated, i18n, callbacks) {
+  topContainer.innerHTML = '';
+  bottomContainer.innerHTML = '';
+
+  if (paginated.hasMorePast) {
+    const btn = document.createElement('button');
+    btn.className = 'already-show-earlier';
+    btn.textContent = `${i18n.showEarlier || 'Show earlier'} (${paginated.remainingPast} remaining)`;
+    btn.addEventListener('click', callbacks.onShowEarlier);
+    topContainer.appendChild(btn);
+  }
+
+  if (paginated.hasMoreFuture) {
+    const btn = document.createElement('button');
+    btn.className = 'already-load-more';
+    btn.textContent = `${i18n.loadMore || 'Load more'} (${paginated.remainingFuture} remaining)`;
+    btn.addEventListener('click', callbacks.onLoadMore);
+    bottomContainer.appendChild(btn);
+  }
+}
