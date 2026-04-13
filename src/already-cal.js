@@ -90,6 +90,7 @@ export function init(userConfig) {
     config.i18n.viewLabels = { ...I18N_DEFAULTS.viewLabels, ...(userConfig && userConfig.i18n && userConfig.i18n.viewLabels) };
   }
   config.locale = config.locale || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+  config.pageSize = (Number.isFinite(config.pageSize) && config.pageSize > 0) ? config.pageSize : DEFAULTS.pageSize;
 
   const theme = { ...THEME_DEFAULTS, ...config.theme };
   const el = typeof config.el === 'string' ? document.querySelector(config.el) : config.el;
@@ -233,7 +234,7 @@ export function init(userConfig) {
         paginationState = { ...paginationState, futureCount: paginationState.futureCount + cfg.pageSize };
         renderView(viewState);
         if (anchorEl && anchorOffset !== null) {
-          const newAnchor = viewContainer.querySelector(`[data-event-id="${anchorEl.dataset.eventId}"]`);
+          const newAnchor = viewContainer.querySelector(`[data-event-id="${CSS.escape(anchorEl.dataset.eventId)}"]`);
           if (newAnchor && newAnchor.getBoundingClientRect) {
             window.scrollTo(0, window.scrollY + (newAnchor.getBoundingClientRect().top - anchorOffset));
           }
@@ -267,12 +268,11 @@ export function init(userConfig) {
       restoreOriginalMeta();
     }
 
-    // Fire onViewChange callback
-    if (config.onViewChange && viewState.view !== 'detail') {
-      const oldView = lastView;
-      if (oldView !== viewState.view) {
-        config.onViewChange(viewState.view, oldView);
-        paginationState = { futureCount: 0, pastCount: 0 };
+    // Reset pagination on view switch (must be outside onViewChange guard)
+    if (viewState.view !== 'detail' && lastView !== viewState.view) {
+      paginationState = { futureCount: 0, pastCount: 0 };
+      if (config.onViewChange) {
+        config.onViewChange(viewState.view, lastView);
       }
     }
 
