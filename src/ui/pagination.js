@@ -1,4 +1,5 @@
 // src/ui/pagination.js
+import { isPast } from '../util/dates.js';
 
 export function paginateEvents(events, showPast, pageSize, paginationState) {
   if (!events || events.length === 0) {
@@ -18,13 +19,11 @@ export function paginateEvents(events, showPast, pageSize, paginationState) {
     };
   }
 
-  // showPast is true — split into past and future by checking event dates
-  const now = new Date();
+  // showPast is true — split into past and future using shared isPast logic
   const past = [];
   const future = [];
   for (const event of events) {
-    const endOrStart = event.end || event.start;
-    if (new Date(endOrStart) < now) {
+    if (isPast(event.end || event.start)) {
       past.push(event);
     } else {
       future.push(event);
