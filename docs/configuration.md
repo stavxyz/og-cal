@@ -30,6 +30,7 @@ Provide exactly one data source.
 | `showPastEvents` | `boolean` | `false` | Show past events by default (visitors can toggle) |
 | `maxEventsPerDay` | `number` | `3` | Month view: event chips shown per day before "+N more" |
 | `initialEvent` | `string \| null` | `null` | Event ID to open in detail view on load |
+| `pageSize` | `number` | `10` | Events per page in grid and list views (pagination) |
 
 ## Header Options
 
@@ -95,6 +96,8 @@ You can also override these directly in CSS:
 | `moreEvents` | `'+{count} more'` | Month view overflow (`{count}` is replaced) |
 | `subscribe` | `'Subscribe'` | Header subscribe button |
 | `clearFilter` | `'Clear'` | Tag filter clear button |
+| `loadMore` | `'Load more'` | Pagination button (grid/list) |
+| `showEarlier` | `'Show earlier'` | Pagination button (grid/list) |
 
 ## Responsive Options
 
@@ -103,6 +106,35 @@ You can also override these directly in CSS:
 | `mobileBreakpoint` | `number` | `768` | Width in pixels below which mobile behavior activates |
 | `mobileDefaultView` | `string` | `'list'` | Default view on mobile (when no hash is set) |
 | `mobileHiddenViews` | `string[]` | `['week']` | Views hidden from the selector on mobile |
+
+## Sticky Header
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sticky` | `boolean \| object` | `true` | Sticky positioning for header elements |
+
+When `true`, all header elements (calendar header, view selector, tag filter) stick to the top of the viewport on scroll. When `false`, nothing is sticky.
+
+For granular control, pass an object:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `header` | `boolean` | `true` | Stick the calendar header |
+| `viewSelector` | `boolean` | `true` | Stick the view selector tabs |
+| `tagFilter` | `boolean` | `true` | Stick the tag filter bar |
+
+When using the object form, omitted keys default to `true`. Sticky elements stack vertically — each element's top offset is calculated from the combined height of sticky elements above it.
+
+```js
+// Everything sticky (default)
+sticky: true
+
+// Nothing sticky
+sticky: false
+
+// Only the view selector sticks
+sticky: { header: false, viewSelector: true, tagFilter: false }
+```
 
 ## Behavior Options
 
@@ -203,7 +235,7 @@ onError: (err) => {
 
 ## Data Hooks
 
-Hooks run during data loading, after enrichment. Order: `enrichEvent` → `eventTransform` → `eventFilter`.
+Hooks run during data loading. The full pipeline order is: `enrichEvent()` (internal — extracts directives, images, links, attachments, tags) → `eventTransform()` (your hook) → `eventFilter()` (your hook). Both `eventTransform` and `eventFilter` receive fully enriched [event objects](event-schema.md).
 
 ### `eventTransform(event) → event`
 
@@ -259,7 +291,7 @@ renderError: ({ message }) => `<div class="my-error">${message}</div>`,
 
 ## Data Attributes
 
-All options can be set via HTML `data-` attributes for zero-JS setup.
+The most common options are available as HTML `data-` attributes for zero-JS setup. Options not listed here (callbacks, data hooks, custom renderers, `sticky`, `pageSize`, `initialEvent`, header options, sanitization, and `imageExtensions`) require JavaScript initialization.
 
 | Attribute | Maps to | Type |
 |-----------|---------|------|
