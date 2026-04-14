@@ -1,8 +1,8 @@
 // test/tag-filter.test.js
-require('./setup-dom.js');
+require('./setup-dom.cjs');
 const { describe, it, before, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { createTestEvent } = require('./helpers.js');
+const { createTestEvent } = require('./helpers.cjs');
 
 let createTagFilter;
 
