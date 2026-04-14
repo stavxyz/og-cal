@@ -25,7 +25,13 @@ var Already = (() => {
   });
 
   // src/util/sanitize.js
-  var ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  var ESC_MAP = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  };
   var URL_PATTERN = /https?:\/\/[^\s<>"]+/gi;
   function escapeHtml(str) {
     if (!str) return "";
@@ -66,7 +72,7 @@ var Already = (() => {
         cleaned.append(key, value);
       }
       const search = cleaned.toString();
-      return u.origin + pathname + (search ? "?" + search : "") + u.hash;
+      return u.origin + pathname + (search ? `?${search}` : "") + u.hash;
     } catch {
       return url;
     }
@@ -89,7 +95,9 @@ var Already = (() => {
       return false;
     }
     addAll(tokens) {
-      tokens.forEach((t) => this.add(t));
+      for (const t of tokens) {
+        this.add(t);
+      }
     }
     ofType(type) {
       return [...this._map.values()].filter((t) => t.type === type);
@@ -136,23 +144,30 @@ var Already = (() => {
     if (DROPBOX_DIRECT_PATTERN.test(url)) return url;
     if (DROPBOX_PATTERN.test(url)) {
       if (typeof console !== "undefined" && console.warn && !normalizeImageUrl._dropboxWarned) {
-        console.warn("already-cal: Dropbox image URL detected. If images fail to render, Dropbox may be serving incorrect content-type headers. Consider re-hosting images on a more reliable service.");
+        console.warn(
+          "already-cal: Dropbox image URL detected. If images fail to render, Dropbox may be serving incorrect content-type headers. Consider re-hosting images on a more reliable service."
+        );
         normalizeImageUrl._dropboxWarned = true;
       }
       if (url.includes("dl=0")) return url.replace("dl=0", "raw=1");
-      if (url.includes("?")) return url + "&raw=1";
-      return url + "?raw=1";
+      if (url.includes("?")) return `${url}&raw=1`;
+      return `${url}?raw=1`;
     }
     return url;
   }
   function buildImagePattern(extensions) {
     const ext = extensions.join("|");
-    return new RegExp(`(https?://[^\\s<>"]+\\.(?:${ext})(?:\\?[^\\s<>"]*)?)`, "gi");
+    return new RegExp(
+      `(https?://[^\\s<>"]+\\.(?:${ext})(?:\\?[^\\s<>"]*)?)`,
+      "gi"
+    );
   }
   function imageCanonicalId(originalUrl) {
     const driveMatch = originalUrl.match(DRIVE_ID_PATTERN);
     if (driveMatch) return `image:drive:${driveMatch[1]}`;
-    const dropboxMatch = originalUrl.match(/dropbox\.com\/(?:scl\/fi|s)\/([^?]+)/);
+    const dropboxMatch = originalUrl.match(
+      /dropbox\.com\/(?:scl\/fi|s)\/([^?]+)/
+    );
     if (dropboxMatch) return `image:dropbox:${dropboxMatch[1]}`;
     const normalized = normalizeUrl(originalUrl);
     try {
@@ -165,43 +180,70 @@ var Already = (() => {
   function extractImageTokens(description, config) {
     if (!description) return { tokens: [], description };
     description = description.replace(/&amp;/g, "&");
-    const extensions = config && config.imageExtensions || DEFAULT_IMAGE_EXTENSIONS;
+    const extensions = config?.imageExtensions || DEFAULT_IMAGE_EXTENSIONS;
     const pattern = buildImagePattern(extensions);
     const seen = /* @__PURE__ */ new Set();
     const tokens = [];
     const originalUrls = [];
     let match;
-    while ((match = pattern.exec(description)) !== null) {
+    match = pattern.exec(description);
+    while (match !== null) {
       const originalUrl = match[1];
       const normalized = normalizeImageUrl(originalUrl);
       const cid = imageCanonicalId(originalUrl);
       if (normalized && !seen.has(cid)) {
         seen.add(cid);
-        tokens.push({ canonicalId: cid, type: "image", source: "url", url: normalized, label: "", metadata: {} });
+        tokens.push({
+          canonicalId: cid,
+          type: "image",
+          source: "url",
+          url: normalized,
+          label: "",
+          metadata: {}
+        });
       }
       originalUrls.push(originalUrl);
+      match = pattern.exec(description);
     }
     DRIVE_URL_PATTERN.lastIndex = 0;
-    while ((match = DRIVE_URL_PATTERN.exec(description)) !== null) {
+    match = DRIVE_URL_PATTERN.exec(description);
+    while (match !== null) {
       const originalUrl = match[0];
       const normalized = normalizeImageUrl(originalUrl);
       const cid = imageCanonicalId(originalUrl);
       if (normalized && !seen.has(cid)) {
         seen.add(cid);
-        tokens.push({ canonicalId: cid, type: "image", source: "url", url: normalized, label: "", metadata: {} });
+        tokens.push({
+          canonicalId: cid,
+          type: "image",
+          source: "url",
+          url: normalized,
+          label: "",
+          metadata: {}
+        });
       }
       originalUrls.push(originalUrl);
+      match = DRIVE_URL_PATTERN.exec(description);
     }
     DROPBOX_URL_PATTERN.lastIndex = 0;
-    while ((match = DROPBOX_URL_PATTERN.exec(description)) !== null) {
+    match = DROPBOX_URL_PATTERN.exec(description);
+    while (match !== null) {
       const originalUrl = match[0];
       const ext = getPathExtension(originalUrl);
+      match = DROPBOX_URL_PATTERN.exec(description);
       if (ext && NON_IMAGE_EXTENSIONS.has(ext)) continue;
       const normalized = normalizeImageUrl(originalUrl);
       const cid = imageCanonicalId(originalUrl);
       if (normalized && !seen.has(cid)) {
         seen.add(cid);
-        tokens.push({ canonicalId: cid, type: "image", source: "url", url: normalized, label: "", metadata: {} });
+        tokens.push({
+          canonicalId: cid,
+          type: "image",
+          source: "url",
+          url: normalized,
+          label: "",
+          metadata: {}
+        });
       }
       originalUrls.push(originalUrl);
     }
@@ -213,258 +255,106 @@ var Already = (() => {
     return { tokens, description: cleaned };
   }
 
-  // src/util/links.js
-  var PROFILE_PREFIXES = /* @__PURE__ */ new Set(["r", "u", "groups"]);
-  function pathSegments(url) {
+  // src/util/attachments.js
+  var IMAGE_EXTENSIONS = new Set(DEFAULT_IMAGE_EXTENSIONS);
+  var EXTENSION_MAP = {
+    pdf: { label: "Download PDF", type: "pdf" },
+    doc: { label: "Download Document", type: "doc" },
+    docx: { label: "Download Document", type: "docx" },
+    xls: { label: "Download Spreadsheet", type: "xls" },
+    xlsx: { label: "Download Spreadsheet", type: "xlsx" },
+    csv: { label: "Download Spreadsheet", type: "csv" },
+    ppt: { label: "Download Presentation", type: "ppt" },
+    pptx: { label: "Download Presentation", type: "pptx" },
+    zip: { label: "Download Archive", type: "zip" },
+    txt: { label: "Download File", type: "txt" }
+  };
+  function normalizeAttachmentUrl(url) {
+    if (!url) return url;
+    const driveMatch = url.match(DRIVE_ID_PATTERN);
+    if (driveMatch)
+      return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+    if (DROPBOX_DIRECT_PATTERN.test(url)) return url;
+    if (DROPBOX_PATTERN.test(url)) {
+      if (url.includes("dl=0")) return url.replace("dl=0", "raw=1");
+      if (url.includes("?")) return `${url}&raw=1`;
+      return `${url}?raw=1`;
+    }
+    return url;
+  }
+  function classifyUrl(url) {
+    const ext = getPathExtension(url);
+    if (ext) {
+      if (IMAGE_EXTENSIONS.has(ext)) return null;
+      if (EXTENSION_MAP[ext]) return EXTENSION_MAP[ext];
+      return null;
+    }
+    const driveMatch = url.match(DRIVE_ID_PATTERN);
+    if (driveMatch) return { label: "Download File", type: "file" };
+    return null;
+  }
+  function attachmentCanonicalId(url) {
+    const driveMatch = url.match(DRIVE_ID_PATTERN);
+    if (driveMatch) return `attachment:drive:${driveMatch[1]}`;
+    const normalized = normalizeUrl(url);
     try {
-      return new URL(url).pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+      const u = new URL(normalized);
+      return `attachment:${u.hostname}${u.pathname}`;
     } catch {
-      return [];
+      return `attachment:${normalized}`;
     }
   }
-  function handleAt(url) {
-    try {
-      const segments = pathSegments(url);
-      if (segments.length === 0) return null;
-      if (segments.length === 2 && PROFILE_PREFIXES.has(segments[0])) {
-        return `${segments[0]}/${segments[1]}`;
-      }
-      if (segments.length === 1) {
-        const seg = segments[0].replace(/^@/, "");
-        if (/\.(jpg|jpeg|png|gif|webp|pdf|html|js|css|php)$/i.test(seg)) return null;
-        return seg;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-  var DEFAULT_PLATFORMS = [
-    {
-      pattern: /eventbrite\.com/i,
-      label: "RSVP on Eventbrite",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        const slug = segs[segs.length - 1] || "";
-        const m = slug.match(/(\d+)$/);
-        return `eventbrite:${m ? m[1] : slug}`;
-      }
-    },
-    {
-      pattern: /docs\.google\.com\/forms/i,
-      label: "Fill Out Form",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        const eIdx = segs.indexOf("e");
-        const id = eIdx !== -1 ? segs[eIdx + 1] : segs[segs.length - 1];
-        return `googleforms:${id || ""}`;
-      }
-    },
-    {
-      pattern: /goo\.gl\/maps|maps\.app\.goo\.gl|google\.com\/maps/i,
-      label: "View on Map",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        if (/maps\.app\.goo\.gl/.test(url)) {
-          return `googlemaps:${segs[0] || ""}`;
-        }
-        return `googlemaps:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /zoom\.us/i,
-      label: "Join Zoom",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        const jIdx = segs.indexOf("j");
-        const id = jIdx !== -1 ? segs[jIdx + 1] : segs[segs.length - 1];
-        return `zoom:${id || ""}`;
-      }
-    },
-    {
-      pattern: /meet\.google\.com/i,
-      label: "Join Google Meet",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `googlemeet:${segs[0] || ""}`;
-      }
-    },
-    {
-      pattern: /instagram\.com/i,
-      labelFn: (url) => {
-        const h = handleAt(url);
-        return h ? `Follow @${h} on Instagram` : "View on Instagram";
-      },
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        if (segs.length === 0) return "instagram:";
-        if (segs.length === 1) return `instagram:${segs[0].replace(/^@/, "")}`;
-        return `instagram:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /facebook\.com|fb\.com/i,
-      labelFn: (url) => {
-        const h = handleAt(url);
-        return h ? `${h} on Facebook` : "View on Facebook";
-      },
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `facebook:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /(?:twitter\.com|(?:^|\/\/)(?:www\.)?x\.com)/i,
-      labelFn: (url) => {
-        const h = handleAt(url);
-        return h ? `Follow @${h} on X` : "View on X";
-      },
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `x:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /reddit\.com/i,
-      labelFn: (url) => {
-        const h = handleAt(url);
-        return h ? `${h} on Reddit` : "View on Reddit";
-      },
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `reddit:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /youtube\.com|youtu\.be/i,
-      label: "Watch on YouTube",
-      canonicalize(url) {
-        try {
-          const parsed = new URL(url);
-          if (/youtu\.be/.test(url)) {
-            const segs2 = pathSegments(url);
-            return `youtube:${segs2[0] || ""}`;
-          }
-          const v = parsed.searchParams.get("v");
-          if (v) return `youtube:${v}`;
-          const segs = pathSegments(url);
-          return `youtube:${segs.join("/")}`;
-        } catch {
-          return "youtube:";
-        }
-      }
-    },
-    {
-      pattern: /tiktok\.com/i,
-      labelFn: (url) => {
-        const h = handleAt(url);
-        return h ? `@${h} on TikTok` : "View on TikTok";
-      },
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        if (segs.length === 0) return "tiktok:";
-        return `tiktok:${segs[0].replace(/^@/, "")}`;
-      }
-    },
-    {
-      pattern: /linkedin\.com/i,
-      label: "View on LinkedIn",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `linkedin:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /discord\.gg|discord\.com/i,
-      label: "Join Discord",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        if (/discord\.gg/.test(url)) return `discord:${segs[0] || ""}`;
-        const invIdx = segs.indexOf("invite");
-        if (invIdx !== -1) return `discord:${segs[invIdx + 1] || ""}`;
-        return `discord:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /lu\.ma/i,
-      label: "RSVP on Luma",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `luma:${segs[0] || ""}`;
-      }
-    },
-    {
-      pattern: /mobilize\.us/i,
-      label: "RSVP on Mobilize",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `mobilize:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /actionnetwork\.org/i,
-      label: "Take Action",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        return `actionnetwork:${segs.join("/")}`;
-      }
-    },
-    {
-      pattern: /gofundme\.com/i,
-      label: "Donate on GoFundMe",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        const fIdx = segs.indexOf("f");
-        const slug = fIdx !== -1 ? segs[fIdx + 1] : segs[segs.length - 1];
-        return `gofundme:${slug || ""}`;
-      }
-    },
-    {
-      pattern: /partiful\.com/i,
-      label: "RSVP on Partiful",
-      canonicalize(url) {
-        const segs = pathSegments(url);
-        const eIdx = segs.indexOf("e");
-        const id = eIdx !== -1 ? segs[eIdx + 1] : segs[segs.length - 1];
-        return `partiful:${id || ""}`;
-      }
-    }
-  ];
-  function extractLinkTokens(description, config) {
+  function extractAttachmentTokens(description, _config) {
     if (!description) return { tokens: [], description };
     description = description.replace(/&amp;/g, "&");
-    const platforms = config && config.knownPlatforms || DEFAULT_PLATFORMS;
     const tokens = [];
     let cleaned = description;
     const seen = /* @__PURE__ */ new Set();
-    URL_PATTERN.lastIndex = 0;
     const urls = description.match(URL_PATTERN) || [];
     for (const url of urls) {
-      const normalized = normalizeUrl(url);
-      for (const platform of platforms) {
-        if (platform.pattern.test(url)) {
-          const canonicalId = platform.canonicalize ? platform.canonicalize(normalized) : null;
-          if (canonicalId && seen.has(canonicalId)) {
-            cleaned = stripUrl(cleaned, url);
-            break;
-          }
-          if (canonicalId) seen.add(canonicalId);
-          const label = platform.labelFn ? platform.labelFn(url) : platform.label;
-          tokens.push({
-            canonicalId: canonicalId || `link:${normalized}`,
-            type: "link",
-            source: "url",
-            url,
-            label,
-            metadata: {}
-          });
-          cleaned = stripUrl(cleaned, url);
-          break;
-        }
+      const classification = classifyUrl(url);
+      if (!classification) continue;
+      const cid = attachmentCanonicalId(url);
+      if (seen.has(cid)) {
+        cleaned = stripUrl(cleaned, url);
+        continue;
       }
+      seen.add(cid);
+      const normalizedUrl = normalizeAttachmentUrl(url);
+      tokens.push({
+        canonicalId: cid,
+        type: "attachment",
+        source: "url",
+        url: normalizedUrl,
+        label: classification.label,
+        metadata: { fileType: classification.type }
+      });
+      cleaned = stripUrl(cleaned, url);
     }
     cleaned = cleanupHtml(cleaned);
     return { tokens, description: cleaned };
+  }
+  function deriveTypeFromMimeType(mimeType) {
+    if (!mimeType) return "file";
+    if (mimeType.includes("pdf")) return "pdf";
+    if (mimeType.includes("presentation") || mimeType.includes("powerpoint"))
+      return "presentation";
+    if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("csv"))
+      return "spreadsheet";
+    if (mimeType.includes("word") || mimeType.includes("document")) return "doc";
+    if (mimeType.includes("zip") || mimeType.includes("archive") || mimeType.includes("compressed"))
+      return "archive";
+    return "file";
+  }
+  function labelForType(type) {
+    const map = {
+      pdf: "Download PDF",
+      doc: "Download Document",
+      spreadsheet: "Download Spreadsheet",
+      presentation: "Download Presentation",
+      archive: "Download Archive"
+    };
+    return map[type] || "Download File";
   }
 
   // node_modules/marked/lib/marked.esm.js
@@ -2637,11 +2527,11 @@ ${text}</tr>
     return "plain";
   }
   function sanitizeHtml(html2, config) {
-    const sanitization = config && config.sanitization;
+    const sanitization = config?.sanitization;
     const allowedTags = new Set(
-      sanitization && sanitization.allowedTags || DEFAULT_ALLOWED_TAGS
+      sanitization?.allowedTags || DEFAULT_ALLOWED_TAGS
     );
-    const allowedAttrs = sanitization && sanitization.allowedAttrs || DEFAULT_ALLOWED_ATTRS;
+    const allowedAttrs = sanitization?.allowedAttrs || DEFAULT_ALLOWED_ATTRS;
     const div = document.createElement("div");
     div.innerHTML = html2;
     sanitizeNode(div, allowedTags, allowedAttrs);
@@ -2678,135 +2568,124 @@ ${text}</tr>
         return sanitizeHtml(text, config);
       case "markdown":
         return sanitizeHtml(marked.parse(text), config);
-      case "plain":
       default:
         return escapeHtml(text).replace(/\n/g, "<br>");
     }
   }
 
-  // src/util/attachments.js
-  var IMAGE_EXTENSIONS = new Set(DEFAULT_IMAGE_EXTENSIONS);
-  var EXTENSION_MAP = {
-    pdf: { label: "Download PDF", type: "pdf" },
-    doc: { label: "Download Document", type: "doc" },
-    docx: { label: "Download Document", type: "docx" },
-    xls: { label: "Download Spreadsheet", type: "xls" },
-    xlsx: { label: "Download Spreadsheet", type: "xlsx" },
-    csv: { label: "Download Spreadsheet", type: "csv" },
-    ppt: { label: "Download Presentation", type: "ppt" },
-    pptx: { label: "Download Presentation", type: "pptx" },
-    zip: { label: "Download Archive", type: "zip" },
-    txt: { label: "Download File", type: "txt" }
-  };
-  function normalizeAttachmentUrl(url) {
-    if (!url) return url;
-    const driveMatch = url.match(DRIVE_ID_PATTERN);
-    if (driveMatch) return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-    if (DROPBOX_DIRECT_PATTERN.test(url)) return url;
-    if (DROPBOX_PATTERN.test(url)) {
-      if (url.includes("dl=0")) return url.replace("dl=0", "raw=1");
-      if (url.includes("?")) return url + "&raw=1";
-      return url + "?raw=1";
-    }
-    return url;
-  }
-  function classifyUrl(url) {
-    const ext = getPathExtension(url);
-    if (ext) {
-      if (IMAGE_EXTENSIONS.has(ext)) return null;
-      if (EXTENSION_MAP[ext]) return EXTENSION_MAP[ext];
-      return null;
-    }
-    const driveMatch = url.match(DRIVE_ID_PATTERN);
-    if (driveMatch) return { label: "Download File", type: "file" };
-    return null;
-  }
-  function attachmentCanonicalId(url) {
-    const driveMatch = url.match(DRIVE_ID_PATTERN);
-    if (driveMatch) return `attachment:drive:${driveMatch[1]}`;
-    const normalized = normalizeUrl(url);
-    try {
-      const u = new URL(normalized);
-      return `attachment:${u.hostname}${u.pathname}`;
-    } catch {
-      return `attachment:${normalized}`;
-    }
-  }
-  function extractAttachmentTokens(description, config) {
-    if (!description) return { tokens: [], description };
-    description = description.replace(/&amp;/g, "&");
-    const tokens = [];
-    let cleaned = description;
-    const seen = /* @__PURE__ */ new Set();
-    const urls = description.match(URL_PATTERN) || [];
-    for (const url of urls) {
-      const classification = classifyUrl(url);
-      if (!classification) continue;
-      const cid = attachmentCanonicalId(url);
-      if (seen.has(cid)) {
-        cleaned = stripUrl(cleaned, url);
-        continue;
-      }
-      seen.add(cid);
-      const normalizedUrl = normalizeAttachmentUrl(url);
-      tokens.push({
-        canonicalId: cid,
-        type: "attachment",
-        source: "url",
-        url: normalizedUrl,
-        label: classification.label,
-        metadata: { fileType: classification.type }
-      });
-      cleaned = stripUrl(cleaned, url);
-    }
-    cleaned = cleanupHtml(cleaned);
-    return { tokens, description: cleaned };
-  }
-  function deriveTypeFromMimeType(mimeType) {
-    if (!mimeType) return "file";
-    if (mimeType.includes("pdf")) return "pdf";
-    if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "presentation";
-    if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("csv")) return "spreadsheet";
-    if (mimeType.includes("word") || mimeType.includes("document")) return "doc";
-    if (mimeType.includes("zip") || mimeType.includes("archive") || mimeType.includes("compressed")) return "archive";
-    return "file";
-  }
-  function labelForType(type) {
-    const map = {
-      pdf: "Download PDF",
-      doc: "Download Document",
-      spreadsheet: "Download Spreadsheet",
-      presentation: "Download Presentation",
-      archive: "Download Archive"
-    };
-    return map[type] || "Download File";
-  }
-
   // src/util/directives.js
   var DIRECTIVE_PATTERN = /#already:([^\s<>]+)/gi;
   var DIRECTIVE_PLATFORMS = {
-    instagram: { label: (v) => `Follow @${v} on Instagram`, canonicalPrefix: "instagram", url: (v) => `https://instagram.com/${v}` },
-    facebook: { label: (v) => `${v} on Facebook`, canonicalPrefix: "facebook", url: (v) => `https://facebook.com/${v}` },
-    x: { label: (v) => `Follow @${v} on X`, canonicalPrefix: "x", url: (v) => `https://x.com/${v}` },
-    twitter: { label: (v) => `Follow @${v} on X`, canonicalPrefix: "x", url: (v) => `https://x.com/${v}` },
-    reddit: { label: (v) => `r/${v} on Reddit`, canonicalPrefix: "reddit", url: (v) => `https://reddit.com/r/${v}` },
-    youtube: { label: () => "Watch on YouTube", canonicalPrefix: "youtube", url: (v) => `https://youtube.com/${v}` },
-    tiktok: { label: (v) => `@${v} on TikTok`, canonicalPrefix: "tiktok", url: (v) => `https://tiktok.com/@${v}` },
-    linkedin: { label: () => "View on LinkedIn", canonicalPrefix: "linkedin", url: (v) => `https://linkedin.com/in/${v}` },
-    discord: { label: () => "Join Discord", canonicalPrefix: "discord", url: (v) => `https://discord.gg/${v}` },
-    zoom: { label: () => "Join Zoom", canonicalPrefix: "zoom", url: (v) => `https://zoom.us/j/${v}` },
-    googlemeet: { label: () => "Join Google Meet", canonicalPrefix: "googlemeet", url: (v) => `https://meet.google.com/${v}` },
-    meet: { label: () => "Join Google Meet", canonicalPrefix: "googlemeet", url: (v) => `https://meet.google.com/${v}` },
-    eventbrite: { label: () => "RSVP on Eventbrite", canonicalPrefix: "eventbrite", url: (v) => `https://eventbrite.com/e/${v}` },
-    luma: { label: () => "RSVP on Luma", canonicalPrefix: "luma", url: (v) => `https://lu.ma/${v}` },
-    mobilize: { label: () => "RSVP on Mobilize", canonicalPrefix: "mobilize", url: (v) => `https://mobilize.us/${v}` },
-    actionnetwork: { label: () => "Take Action", canonicalPrefix: "actionnetwork", url: (v) => `https://actionnetwork.org/${v}` },
-    gofundme: { label: () => "Donate on GoFundMe", canonicalPrefix: "gofundme", url: (v) => `https://gofundme.com/f/${v}` },
-    partiful: { label: () => "RSVP on Partiful", canonicalPrefix: "partiful", url: (v) => `https://partiful.com/e/${v}` },
-    googleforms: { label: () => "Fill Out Form", canonicalPrefix: "googleforms", url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform` },
-    forms: { label: () => "Fill Out Form", canonicalPrefix: "googleforms", url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform` },
-    googlemaps: { label: () => "View on Map", canonicalPrefix: "googlemaps", url: (v) => `https://maps.google.com/?q=${v}` },
-    maps: { label: () => "View on Map", canonicalPrefix: "googlemaps", url: (v) => `https://maps.google.com/?q=${v}` }
+    instagram: {
+      label: (v) => `Follow @${v} on Instagram`,
+      canonicalPrefix: "instagram",
+      url: (v) => `https://instagram.com/${v}`
+    },
+    facebook: {
+      label: (v) => `${v} on Facebook`,
+      canonicalPrefix: "facebook",
+      url: (v) => `https://facebook.com/${v}`
+    },
+    x: {
+      label: (v) => `Follow @${v} on X`,
+      canonicalPrefix: "x",
+      url: (v) => `https://x.com/${v}`
+    },
+    twitter: {
+      label: (v) => `Follow @${v} on X`,
+      canonicalPrefix: "x",
+      url: (v) => `https://x.com/${v}`
+    },
+    reddit: {
+      label: (v) => `r/${v} on Reddit`,
+      canonicalPrefix: "reddit",
+      url: (v) => `https://reddit.com/r/${v}`
+    },
+    youtube: {
+      label: () => "Watch on YouTube",
+      canonicalPrefix: "youtube",
+      url: (v) => `https://youtube.com/${v}`
+    },
+    tiktok: {
+      label: (v) => `@${v} on TikTok`,
+      canonicalPrefix: "tiktok",
+      url: (v) => `https://tiktok.com/@${v}`
+    },
+    linkedin: {
+      label: () => "View on LinkedIn",
+      canonicalPrefix: "linkedin",
+      url: (v) => `https://linkedin.com/in/${v}`
+    },
+    discord: {
+      label: () => "Join Discord",
+      canonicalPrefix: "discord",
+      url: (v) => `https://discord.gg/${v}`
+    },
+    zoom: {
+      label: () => "Join Zoom",
+      canonicalPrefix: "zoom",
+      url: (v) => `https://zoom.us/j/${v}`
+    },
+    googlemeet: {
+      label: () => "Join Google Meet",
+      canonicalPrefix: "googlemeet",
+      url: (v) => `https://meet.google.com/${v}`
+    },
+    meet: {
+      label: () => "Join Google Meet",
+      canonicalPrefix: "googlemeet",
+      url: (v) => `https://meet.google.com/${v}`
+    },
+    eventbrite: {
+      label: () => "RSVP on Eventbrite",
+      canonicalPrefix: "eventbrite",
+      url: (v) => `https://eventbrite.com/e/${v}`
+    },
+    luma: {
+      label: () => "RSVP on Luma",
+      canonicalPrefix: "luma",
+      url: (v) => `https://lu.ma/${v}`
+    },
+    mobilize: {
+      label: () => "RSVP on Mobilize",
+      canonicalPrefix: "mobilize",
+      url: (v) => `https://mobilize.us/${v}`
+    },
+    actionnetwork: {
+      label: () => "Take Action",
+      canonicalPrefix: "actionnetwork",
+      url: (v) => `https://actionnetwork.org/${v}`
+    },
+    gofundme: {
+      label: () => "Donate on GoFundMe",
+      canonicalPrefix: "gofundme",
+      url: (v) => `https://gofundme.com/f/${v}`
+    },
+    partiful: {
+      label: () => "RSVP on Partiful",
+      canonicalPrefix: "partiful",
+      url: (v) => `https://partiful.com/e/${v}`
+    },
+    googleforms: {
+      label: () => "Fill Out Form",
+      canonicalPrefix: "googleforms",
+      url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform`
+    },
+    forms: {
+      label: () => "Fill Out Form",
+      canonicalPrefix: "googleforms",
+      url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform`
+    },
+    googlemaps: {
+      label: () => "View on Map",
+      canonicalPrefix: "googlemaps",
+      url: (v) => `https://maps.google.com/?q=${v}`
+    },
+    maps: {
+      label: () => "View on Map",
+      canonicalPrefix: "googlemaps",
+      url: (v) => `https://maps.google.com/?q=${v}`
+    }
   };
   function parseDirective(body) {
     const colonIdx = body.indexOf(":");
@@ -2869,7 +2748,8 @@ ${text}</tr>
     };
   }
   function extractDirectives(description) {
-    if (!description) return { tokens: [], description, featured: false, hidden: false };
+    if (!description)
+      return { tokens: [], description, featured: false, hidden: false };
     description = description.replace(/&amp;/g, "&");
     const tokens = [];
     const seen = /* @__PURE__ */ new Set();
@@ -2901,6 +2781,261 @@ ${text}</tr>
     return { tokens, description: cleaned, featured, hidden };
   }
 
+  // src/util/links.js
+  var PROFILE_PREFIXES = /* @__PURE__ */ new Set(["r", "u", "groups"]);
+  function pathSegments(url) {
+    try {
+      return new URL(url).pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+  function handleAt(url) {
+    try {
+      const segments = pathSegments(url);
+      if (segments.length === 0) return null;
+      if (segments.length === 2 && PROFILE_PREFIXES.has(segments[0])) {
+        return `${segments[0]}/${segments[1]}`;
+      }
+      if (segments.length === 1) {
+        const seg = segments[0].replace(/^@/, "");
+        if (/\.(jpg|jpeg|png|gif|webp|pdf|html|js|css|php)$/i.test(seg))
+          return null;
+        return seg;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  var DEFAULT_PLATFORMS = [
+    {
+      pattern: /eventbrite\.com/i,
+      label: "RSVP on Eventbrite",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        const slug = segs[segs.length - 1] || "";
+        const m = slug.match(/(\d+)$/);
+        return `eventbrite:${m ? m[1] : slug}`;
+      }
+    },
+    {
+      pattern: /docs\.google\.com\/forms/i,
+      label: "Fill Out Form",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        const eIdx = segs.indexOf("e");
+        const id = eIdx !== -1 ? segs[eIdx + 1] : segs[segs.length - 1];
+        return `googleforms:${id || ""}`;
+      }
+    },
+    {
+      pattern: /goo\.gl\/maps|maps\.app\.goo\.gl|google\.com\/maps/i,
+      label: "View on Map",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        if (/maps\.app\.goo\.gl/.test(url)) {
+          return `googlemaps:${segs[0] || ""}`;
+        }
+        return `googlemaps:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /zoom\.us/i,
+      label: "Join Zoom",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        const jIdx = segs.indexOf("j");
+        const id = jIdx !== -1 ? segs[jIdx + 1] : segs[segs.length - 1];
+        return `zoom:${id || ""}`;
+      }
+    },
+    {
+      pattern: /meet\.google\.com/i,
+      label: "Join Google Meet",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `googlemeet:${segs[0] || ""}`;
+      }
+    },
+    {
+      pattern: /instagram\.com/i,
+      labelFn: (url) => {
+        const h = handleAt(url);
+        return h ? `Follow @${h} on Instagram` : "View on Instagram";
+      },
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        if (segs.length === 0) return "instagram:";
+        if (segs.length === 1) return `instagram:${segs[0].replace(/^@/, "")}`;
+        return `instagram:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /facebook\.com|fb\.com/i,
+      labelFn: (url) => {
+        const h = handleAt(url);
+        return h ? `${h} on Facebook` : "View on Facebook";
+      },
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `facebook:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /(?:twitter\.com|(?:^|\/\/)(?:www\.)?x\.com)/i,
+      labelFn: (url) => {
+        const h = handleAt(url);
+        return h ? `Follow @${h} on X` : "View on X";
+      },
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `x:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /reddit\.com/i,
+      labelFn: (url) => {
+        const h = handleAt(url);
+        return h ? `${h} on Reddit` : "View on Reddit";
+      },
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `reddit:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /youtube\.com|youtu\.be/i,
+      label: "Watch on YouTube",
+      canonicalize(url) {
+        try {
+          const parsed = new URL(url);
+          if (/youtu\.be/.test(url)) {
+            const segs2 = pathSegments(url);
+            return `youtube:${segs2[0] || ""}`;
+          }
+          const v = parsed.searchParams.get("v");
+          if (v) return `youtube:${v}`;
+          const segs = pathSegments(url);
+          return `youtube:${segs.join("/")}`;
+        } catch {
+          return "youtube:";
+        }
+      }
+    },
+    {
+      pattern: /tiktok\.com/i,
+      labelFn: (url) => {
+        const h = handleAt(url);
+        return h ? `@${h} on TikTok` : "View on TikTok";
+      },
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        if (segs.length === 0) return "tiktok:";
+        return `tiktok:${segs[0].replace(/^@/, "")}`;
+      }
+    },
+    {
+      pattern: /linkedin\.com/i,
+      label: "View on LinkedIn",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `linkedin:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /discord\.gg|discord\.com/i,
+      label: "Join Discord",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        if (/discord\.gg/.test(url)) return `discord:${segs[0] || ""}`;
+        const invIdx = segs.indexOf("invite");
+        if (invIdx !== -1) return `discord:${segs[invIdx + 1] || ""}`;
+        return `discord:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /lu\.ma/i,
+      label: "RSVP on Luma",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `luma:${segs[0] || ""}`;
+      }
+    },
+    {
+      pattern: /mobilize\.us/i,
+      label: "RSVP on Mobilize",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `mobilize:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /actionnetwork\.org/i,
+      label: "Take Action",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        return `actionnetwork:${segs.join("/")}`;
+      }
+    },
+    {
+      pattern: /gofundme\.com/i,
+      label: "Donate on GoFundMe",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        const fIdx = segs.indexOf("f");
+        const slug = fIdx !== -1 ? segs[fIdx + 1] : segs[segs.length - 1];
+        return `gofundme:${slug || ""}`;
+      }
+    },
+    {
+      pattern: /partiful\.com/i,
+      label: "RSVP on Partiful",
+      canonicalize(url) {
+        const segs = pathSegments(url);
+        const eIdx = segs.indexOf("e");
+        const id = eIdx !== -1 ? segs[eIdx + 1] : segs[segs.length - 1];
+        return `partiful:${id || ""}`;
+      }
+    }
+  ];
+  function extractLinkTokens(description, config) {
+    if (!description) return { tokens: [], description };
+    description = description.replace(/&amp;/g, "&");
+    const platforms = config?.knownPlatforms || DEFAULT_PLATFORMS;
+    const tokens = [];
+    let cleaned = description;
+    const seen = /* @__PURE__ */ new Set();
+    URL_PATTERN.lastIndex = 0;
+    const urls = description.match(URL_PATTERN) || [];
+    for (const url of urls) {
+      const normalized = normalizeUrl(url);
+      for (const platform of platforms) {
+        if (platform.pattern.test(url)) {
+          const canonicalId = platform.canonicalize ? platform.canonicalize(normalized) : null;
+          if (canonicalId && seen.has(canonicalId)) {
+            cleaned = stripUrl(cleaned, url);
+            break;
+          }
+          if (canonicalId) seen.add(canonicalId);
+          const label = platform.labelFn ? platform.labelFn(url) : platform.label;
+          tokens.push({
+            canonicalId: canonicalId || `link:${normalized}`,
+            type: "link",
+            source: "url",
+            url,
+            label,
+            metadata: {}
+          });
+          cleaned = stripUrl(cleaned, url);
+          break;
+        }
+      }
+    }
+    cleaned = cleanupHtml(cleaned);
+    return { tokens, description: cleaned };
+  }
+
   // src/data.js
   async function loadData(config) {
     let data;
@@ -2917,10 +3052,15 @@ ${text}</tr>
     } else if (config.google) {
       data = await fetchGoogleCalendar(config.google, config);
     } else {
-      throw new Error("already-cal: No data source configured. Provide data, fetchUrl, or google config.");
+      throw new Error(
+        "already-cal: No data source configured. Provide data, fetchUrl, or google config."
+      );
     }
     if (data.events) {
-      data = { ...data, events: data.events.map((event) => enrichEvent(event, config)) };
+      data = {
+        ...data,
+        events: data.events.map((event) => enrichEvent(event, config))
+      };
     }
     if (config.eventTransform && data.events) {
       data = { ...data, events: data.events.map(config.eventTransform) };
@@ -2950,7 +3090,9 @@ ${text}</tr>
       description = result.description;
       tokenSet.addAll(result.tokens);
     }
-    const attachmentImages = getImagesFromAttachments(event._imageAttachments || event.attachments);
+    const attachmentImages = getImagesFromAttachments(
+      event._imageAttachments || event.attachments
+    );
     if (attachmentImages.length > 0) {
       const imgTokens = tokenSet.ofType("image");
       const existing = new Set(imgTokens.map((t) => t.url));
@@ -3006,7 +3148,18 @@ ${text}</tr>
     ];
     const descriptionFormat = event.descriptionFormat || detectFormat(description);
     const { _imageAttachments, ...rest } = event;
-    return { ...rest, description, descriptionFormat, image, images, links, attachments, tags, featured, hidden };
+    return {
+      ...rest,
+      description,
+      descriptionFormat,
+      image,
+      images,
+      links,
+      attachments,
+      tags,
+      featured,
+      hidden
+    };
   }
   async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -3018,14 +3171,14 @@ ${text}</tr>
   }
   function getImagesFromAttachments(attachments) {
     if (!attachments) return [];
-    return attachments.filter((a) => a.mimeType && a.mimeType.startsWith("image/")).map((a) => normalizeImageUrl(a.fileUrl || a.url)).filter(Boolean);
+    return attachments.filter((a) => a.mimeType?.startsWith("image/")).map((a) => normalizeImageUrl(a.fileUrl || a.url)).filter(Boolean);
   }
   function transformGoogleEvents(googleData, config) {
     const events = (googleData.items || []).map((item) => {
       const apiAttachments = [];
       const imageAttachments = [];
       for (const a of item.attachments || []) {
-        if (a.mimeType && a.mimeType.startsWith("image/")) {
+        if (a.mimeType?.startsWith("image/")) {
           imageAttachments.push({ mimeType: a.mimeType, url: a.fileUrl });
         } else {
           const type = deriveTypeFromMimeType(a.mimeType);
@@ -3036,20 +3189,23 @@ ${text}</tr>
           });
         }
       }
-      return enrichEvent({
-        id: item.id,
-        title: item.summary || "Untitled Event",
-        description: item.description || "",
-        location: item.location || "",
-        start: item.start?.dateTime || item.start?.date || "",
-        end: item.end?.dateTime || item.end?.date || "",
-        allDay: !item.start?.dateTime,
-        image: null,
-        images: [],
-        links: [],
-        attachments: apiAttachments,
-        _imageAttachments: imageAttachments
-      }, config);
+      return enrichEvent(
+        {
+          id: item.id,
+          title: item.summary || "Untitled Event",
+          description: item.description || "",
+          location: item.location || "",
+          start: item.start?.dateTime || item.start?.date || "",
+          end: item.end?.dateTime || item.end?.date || "",
+          allDay: !item.start?.dateTime,
+          image: null,
+          images: [],
+          links: [],
+          attachments: apiAttachments,
+          _imageAttachments: imageAttachments
+        },
+        config
+      );
     });
     return {
       events,
@@ -3065,7 +3221,7 @@ ${text}</tr>
   // src/router.js
   var VALID_VIEWS = ["month", "week", "day", "grid", "list"];
   function storageKey(config) {
-    const prefix = config && config.storageKeyPrefix || "already";
+    const prefix = config?.storageKeyPrefix || "already";
     return `${prefix}-view`;
   }
   function parseHash() {
@@ -3087,7 +3243,7 @@ ${text}</tr>
     return null;
   }
   function getInitialView(defaultView, enabledViews, config) {
-    if (config && config.initialEvent) {
+    if (config?.initialEvent) {
       return { view: "detail", eventId: config.initialEvent };
     }
     const fromHash = parseHash();
@@ -3114,171 +3270,72 @@ ${text}</tr>
     });
   }
 
-  // src/ui/view-selector.js
-  var DEFAULT_VIEW_LABELS = {
-    month: "Month",
-    week: "Week",
-    day: "Day",
-    grid: "Grid",
-    list: "List"
-  };
-  var SVG_NS = "http://www.w3.org/2000/svg";
-  function createSvg() {
-    const svg = document.createElementNS(SVG_NS, "svg");
-    svg.setAttribute("width", "16");
-    svg.setAttribute("height", "16");
-    svg.setAttribute("viewBox", "0 0 16 16");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "1.5");
-    svg.setAttribute("aria-hidden", "true");
-    return svg;
-  }
-  function svgEl(tag2, attrs) {
-    const e = document.createElementNS(SVG_NS, tag2);
-    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-    return e;
-  }
-  var VIEW_ICONS = {
-    month: () => {
-      const svg = createSvg();
-      svg.appendChild(svgEl("rect", { x: "1", y: "3", width: "14", height: "12", rx: "1" }));
-      svg.appendChild(svgEl("line", { x1: "1", y1: "7", x2: "15", y2: "7" }));
-      svg.appendChild(svgEl("line", { x1: "5.5", y1: "7", x2: "5.5", y2: "15" }));
-      svg.appendChild(svgEl("line", { x1: "10.5", y1: "7", x2: "10.5", y2: "15" }));
-      return svg;
-    },
-    week: () => {
-      const svg = createSvg();
-      svg.appendChild(svgEl("rect", { x: "1", y: "1", width: "3", height: "14", rx: "0.5" }));
-      svg.appendChild(svgEl("rect", { x: "6.5", y: "1", width: "3", height: "14", rx: "0.5" }));
-      svg.appendChild(svgEl("rect", { x: "12", y: "1", width: "3", height: "14", rx: "0.5" }));
-      return svg;
-    },
-    day: () => {
-      const svg = createSvg();
-      svg.appendChild(svgEl("rect", { x: "3", y: "1", width: "10", height: "14", rx: "1" }));
-      svg.appendChild(svgEl("line", { x1: "5.5", y1: "5", x2: "10.5", y2: "5" }));
-      svg.appendChild(svgEl("line", { x1: "5.5", y1: "8", x2: "10.5", y2: "8" }));
-      svg.appendChild(svgEl("line", { x1: "5.5", y1: "11", x2: "9", y2: "11" }));
-      return svg;
-    },
-    grid: () => {
-      const svg = createSvg();
-      svg.appendChild(svgEl("rect", { x: "1", y: "1", width: "6", height: "6", rx: "1" }));
-      svg.appendChild(svgEl("rect", { x: "9", y: "1", width: "6", height: "6", rx: "1" }));
-      svg.appendChild(svgEl("rect", { x: "1", y: "9", width: "6", height: "6", rx: "1" }));
-      svg.appendChild(svgEl("rect", { x: "9", y: "9", width: "6", height: "6", rx: "1" }));
-      return svg;
-    },
-    list: () => {
-      const svg = createSvg();
-      svg.appendChild(svgEl("line", { x1: "1", y1: "3", x2: "15", y2: "3" }));
-      svg.appendChild(svgEl("line", { x1: "1", y1: "8", x2: "15", y2: "8" }));
-      svg.appendChild(svgEl("line", { x1: "1", y1: "13", x2: "15", y2: "13" }));
-      return svg;
+  // src/ui/header.js
+  function renderHeader(container, calendarData, config) {
+    if (!config.showHeader) {
+      container.innerHTML = "";
+      return;
     }
-  };
-  function renderViewSelector(container, views, activeView, isMobile, config) {
-    const i18n = config && config.i18n || {};
-    const viewLabels = { ...DEFAULT_VIEW_LABELS, ...i18n.viewLabels };
-    const mobileHiddenViews = config && config.mobileHiddenViews || ["week"];
-    const filtered = isMobile ? views.filter((v) => !mobileHiddenViews.includes(v)) : views;
-    const bar = document.createElement("div");
-    bar.className = "already-view-selector";
-    bar.setAttribute("role", "tablist");
-    for (const view of filtered) {
-      const tab = document.createElement("button");
-      tab.className = "already-view-tab" + (view === activeView ? " already-view-tab--active" : "");
-      tab.setAttribute("role", "tab");
-      tab.setAttribute("aria-selected", view === activeView ? "true" : "false");
-      const iconFn = VIEW_ICONS[view];
-      if (iconFn) tab.appendChild(iconFn());
-      tab.appendChild(document.createTextNode(viewLabels[view] || view));
-      tab.addEventListener("click", () => setView(view, config));
-      bar.appendChild(tab);
+    const name = config.headerTitle ?? calendarData?.name ?? "";
+    const description = config.headerDescription ?? calendarData?.description ?? "";
+    if (!name && !description) {
+      container.innerHTML = "";
+      return;
+    }
+    const i18n = config.i18n || {};
+    const subscribeLabel = i18n.subscribe || "Subscribe";
+    let subscribeUrl = config.subscribeUrl || null;
+    if (!subscribeUrl && config.google?.calendarId) {
+      const cid = btoa(config.google.calendarId).replace(/=+$/, "");
+      subscribeUrl = `https://calendar.google.com/calendar/u/0?cid=${cid}`;
+    }
+    if (!subscribeUrl && calendarData?.calendarId) {
+      const cid = btoa(calendarData.calendarId).replace(/=+$/, "");
+      subscribeUrl = `https://calendar.google.com/calendar/u/0?cid=${cid}`;
+    }
+    const header = document.createElement("div");
+    header.className = "already-header";
+    if (config.headerIcon) {
+      const icon = document.createElement("img");
+      icon.className = "already-header-icon";
+      icon.src = config.headerIcon;
+      icon.alt = "";
+      icon.loading = "lazy";
+      header.appendChild(icon);
+    }
+    const textCol = document.createElement("div");
+    textCol.className = "already-header-text";
+    if (name) {
+      const h = document.createElement("h2");
+      h.className = "already-header-name";
+      h.textContent = name;
+      textCol.appendChild(h);
+    }
+    if (description) {
+      const p = document.createElement("p");
+      p.className = "already-header-description";
+      if (subscribeUrl && /subscribe/i.test(description)) {
+        p.innerHTML = description.replace(
+          /(subscribe)/i,
+          `<a href="${subscribeUrl}" target="_blank" rel="noopener" class="already-header-description-link">$1</a>`
+        );
+      } else {
+        p.textContent = description;
+      }
+      textCol.appendChild(p);
+    }
+    header.appendChild(textCol);
+    if (subscribeUrl) {
+      const btn = document.createElement("a");
+      btn.className = "already-header-subscribe";
+      btn.href = subscribeUrl;
+      btn.target = "_blank";
+      btn.rel = "noopener";
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 1v2M11 1v2M2 6h12M3 3h10a1 1 0 011 1v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8v4M6 10h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> ${escapeHtml(subscribeLabel)}`;
+      header.appendChild(btn);
     }
     container.innerHTML = "";
-    container.appendChild(bar);
-  }
-
-  // src/ui/states.js
-  function renderLoading(container, config) {
-    if (config && config.renderLoading) {
-      const result = config.renderLoading();
-      if (typeof result === "string") {
-        container.innerHTML = result;
-      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
-        container.innerHTML = "";
-        container.appendChild(result);
-      }
-      return;
-    }
-    container.innerHTML = `
-    <div class="already-loading">
-      <div class="already-loading-pulse"></div>
-      <div class="already-loading-pulse"></div>
-      <div class="already-loading-pulse"></div>
-    </div>`;
-  }
-  function renderEmpty(container, hasPastEvents, onShowPast, config) {
-    const i18n = config && config.i18n || {};
-    const noUpcomingEvents = i18n.noUpcomingEvents || "No upcoming events.";
-    const showPastEvents = i18n.showPastEvents || "Show past events";
-    if (config && config.renderEmpty) {
-      const result = config.renderEmpty({ hasPastEvents });
-      if (typeof result === "string") {
-        container.innerHTML = result;
-      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
-        container.innerHTML = "";
-        container.appendChild(result);
-      }
-      return;
-    }
-    const pastLink = hasPastEvents ? `<button class="already-empty-past-link" onclick="this.dispatchEvent(new CustomEvent('already:show-past', { bubbles: true }))">${showPastEvents}</button>` : "";
-    container.innerHTML = `
-    <div class="already-empty">
-      <div class="already-empty-icon">\u{1F4C5}</div>
-      <p>${noUpcomingEvents}</p>
-      ${pastLink}
-    </div>`;
-    if (hasPastEvents) {
-      container.querySelector(".already-empty-past-link")?.addEventListener("click", onShowPast);
-    }
-  }
-  function renderError(container, message, onRetry, config) {
-    const i18n = config && config.i18n || {};
-    const couldNotLoad = i18n.couldNotLoad || "Could not load events.";
-    const retry = i18n.retry || "Retry";
-    if (config && config.renderError) {
-      const result = config.renderError({ message });
-      if (typeof result === "string") {
-        container.innerHTML = result;
-      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
-        container.innerHTML = "";
-        container.appendChild(result);
-      }
-      return;
-    }
-    container.innerHTML = `
-    <div class="already-error">
-      <p>${couldNotLoad}</p>
-      <button class="already-error-retry">${retry}</button>
-    </div>`;
-    container.querySelector(".already-error-retry")?.addEventListener("click", onRetry);
-  }
-
-  // src/ui/past-toggle.js
-  function renderPastToggle(container, showingPast, onToggle, config) {
-    const i18n = config && config.i18n || {};
-    const showLabel = i18n.showPastEvents || "Show past events";
-    const hideLabel = i18n.hidePastEvents || "Hide past events";
-    const btn = document.createElement("button");
-    btn.className = "already-past-toggle";
-    btn.textContent = showingPast ? hideLabel : showLabel;
-    btn.addEventListener("click", onToggle);
-    container.innerHTML = "";
-    container.appendChild(btn);
+    container.appendChild(header);
   }
 
   // src/util/dates.js
@@ -3330,7 +3387,10 @@ ${text}</tr>
   }
   function getMonthName(year, month, locale) {
     locale = locale || "en-US";
-    return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(new Date(year, month));
+    return new Intl.DateTimeFormat(locale, {
+      month: "long",
+      year: "numeric"
+    }).format(new Date(year, month));
   }
   function getDatePartsInTz(isoString, timezone, locale) {
     locale = locale || "en-US";
@@ -3343,9 +3403,9 @@ ${text}</tr>
     });
     const parts = {};
     for (const { type, value } of fmt.formatToParts(d)) {
-      if (type === "year") parts.year = parseInt(value);
-      if (type === "month") parts.month = parseInt(value) - 1;
-      if (type === "day") parts.day = parseInt(value);
+      if (type === "year") parts.year = parseInt(value, 10);
+      if (type === "month") parts.month = parseInt(value, 10) - 1;
+      if (type === "day") parts.day = parseInt(value, 10);
     }
     return parts;
   }
@@ -3375,6 +3435,369 @@ ${text}</tr>
       names.push(new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d));
     }
     return names;
+  }
+
+  // src/ui/pagination.js
+  function paginateEvents(events, showPast, pageSize, paginationState) {
+    if (!events || events.length === 0) {
+      return {
+        visible: [],
+        hasMoreFuture: false,
+        hasMorePast: false,
+        remainingFuture: 0,
+        remainingPast: 0
+      };
+    }
+    if (!showPast) {
+      const limit = pageSize + paginationState.futureCount;
+      const visible2 = events.slice(0, limit);
+      const remainingFuture2 = Math.max(0, events.length - limit);
+      return {
+        visible: visible2,
+        hasMoreFuture: remainingFuture2 > 0,
+        hasMorePast: false,
+        remainingFuture: remainingFuture2,
+        remainingPast: 0
+      };
+    }
+    const past = [];
+    const future = [];
+    for (const event of events) {
+      if (isPast(event.end || event.start)) {
+        past.push(event);
+      } else {
+        future.push(event);
+      }
+    }
+    const pastReversed = [...past].reverse();
+    const pastLimit = pageSize + paginationState.pastCount;
+    const visiblePast = pastReversed.slice(0, pastLimit);
+    const remainingPast = Math.max(0, pastReversed.length - pastLimit);
+    const futureLimit = pageSize + paginationState.futureCount;
+    const visibleFuture = future.slice(0, futureLimit);
+    const remainingFuture = Math.max(0, future.length - futureLimit);
+    const visiblePastChronological = [...visiblePast].reverse();
+    const visible = [...visiblePastChronological, ...visibleFuture];
+    return {
+      visible,
+      hasMoreFuture: remainingFuture > 0,
+      hasMorePast: remainingPast > 0,
+      remainingFuture,
+      remainingPast
+    };
+  }
+  function renderPaginationButtons(topContainer, bottomContainer, paginated, i18n, callbacks) {
+    topContainer.innerHTML = "";
+    bottomContainer.innerHTML = "";
+    if (paginated.hasMorePast) {
+      const btn = document.createElement("button");
+      btn.className = "already-show-earlier";
+      btn.textContent = `${i18n.showEarlier || "Show earlier"} (${paginated.remainingPast} remaining)`;
+      btn.addEventListener("click", callbacks.onShowEarlier);
+      topContainer.appendChild(btn);
+    }
+    if (paginated.hasMoreFuture) {
+      const btn = document.createElement("button");
+      btn.className = "already-load-more";
+      btn.textContent = `${i18n.loadMore || "Load more"} (${paginated.remainingFuture} remaining)`;
+      btn.addEventListener("click", callbacks.onLoadMore);
+      bottomContainer.appendChild(btn);
+    }
+  }
+
+  // src/ui/past-toggle.js
+  function renderPastToggle(container, showingPast, onToggle, config) {
+    const i18n = config?.i18n || {};
+    const showLabel = i18n.showPastEvents || "Show past events";
+    const hideLabel = i18n.hidePastEvents || "Hide past events";
+    const btn = document.createElement("button");
+    btn.className = "already-past-toggle";
+    btn.textContent = showingPast ? hideLabel : showLabel;
+    btn.addEventListener("click", onToggle);
+    container.innerHTML = "";
+    container.appendChild(btn);
+  }
+
+  // src/ui/states.js
+  function renderLoading(container, config) {
+    if (config?.renderLoading) {
+      const result = config.renderLoading();
+      if (typeof result === "string") {
+        container.innerHTML = result;
+      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+        container.innerHTML = "";
+        container.appendChild(result);
+      }
+      return;
+    }
+    container.innerHTML = `
+    <div class="already-loading">
+      <div class="already-loading-pulse"></div>
+      <div class="already-loading-pulse"></div>
+      <div class="already-loading-pulse"></div>
+    </div>`;
+  }
+  function renderEmpty(container, hasPastEvents, onShowPast, config) {
+    const i18n = config?.i18n || {};
+    const noUpcomingEvents = i18n.noUpcomingEvents || "No upcoming events.";
+    const showPastEvents = i18n.showPastEvents || "Show past events";
+    if (config?.renderEmpty) {
+      const result = config.renderEmpty({ hasPastEvents });
+      if (typeof result === "string") {
+        container.innerHTML = result;
+      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+        container.innerHTML = "";
+        container.appendChild(result);
+      }
+      return;
+    }
+    const pastLink = hasPastEvents ? `<button class="already-empty-past-link" onclick="this.dispatchEvent(new CustomEvent('already:show-past', { bubbles: true }))">${showPastEvents}</button>` : "";
+    container.innerHTML = `
+    <div class="already-empty">
+      <div class="already-empty-icon">\u{1F4C5}</div>
+      <p>${noUpcomingEvents}</p>
+      ${pastLink}
+    </div>`;
+    if (hasPastEvents) {
+      container.querySelector(".already-empty-past-link")?.addEventListener("click", onShowPast);
+    }
+  }
+  function renderError(container, message, onRetry, config) {
+    const i18n = config?.i18n || {};
+    const couldNotLoad = i18n.couldNotLoad || "Could not load events.";
+    const retry = i18n.retry || "Retry";
+    if (config?.renderError) {
+      const result = config.renderError({ message });
+      if (typeof result === "string") {
+        container.innerHTML = result;
+      } else if (result instanceof HTMLElement || result instanceof DocumentFragment) {
+        container.innerHTML = "";
+        container.appendChild(result);
+      }
+      return;
+    }
+    container.innerHTML = `
+    <div class="already-error">
+      <p>${couldNotLoad}</p>
+      <button class="already-error-retry">${retry}</button>
+    </div>`;
+    container.querySelector(".already-error-retry")?.addEventListener("click", onRetry);
+  }
+
+  // src/ui/sticky.js
+  var ALL_ON = { header: true, viewSelector: true, tagFilter: true };
+  var ALL_OFF = { header: false, viewSelector: false, tagFilter: false };
+  function resolveSticky(value) {
+    if (value === false) return { ...ALL_OFF };
+    if (value === true || value === void 0 || value === null || typeof value !== "object") {
+      return { ...ALL_ON };
+    }
+    return {
+      header: value.header !== false,
+      viewSelector: value.viewSelector !== false,
+      tagFilter: value.tagFilter !== false
+    };
+  }
+  function applyStickyClasses(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
+    const containers = [
+      [stickyConfig.header, headerContainer],
+      [stickyConfig.viewSelector, selectorContainer],
+      [stickyConfig.tagFilter, tagFilterContainer]
+    ];
+    for (const [enabled, container] of containers) {
+      container.classList.toggle("already-sticky", enabled);
+    }
+  }
+  function updateStickyOffsets(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
+    let offset = 0;
+    if (stickyConfig.header && headerContainer.classList.contains("already-sticky")) {
+      headerContainer.style.top = `${offset}px`;
+      offset += headerContainer.offsetHeight;
+    }
+    if (stickyConfig.viewSelector && selectorContainer.classList.contains("already-sticky")) {
+      selectorContainer.style.top = `${offset}px`;
+      offset += selectorContainer.offsetHeight;
+    }
+    if (stickyConfig.tagFilter && tagFilterContainer.classList.contains("already-sticky")) {
+      tagFilterContainer.style.top = `${offset}px`;
+    }
+  }
+
+  // src/ui/tag-filter.js
+  function createTagFilter(onFilterChange, config) {
+    const selectedTags = /* @__PURE__ */ new Set();
+    const clearLabel = config?.i18n?.clearFilter || "Clear";
+    function getTagLabel(tag2) {
+      return tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
+    }
+    function render(container, events) {
+      const tagCounts = /* @__PURE__ */ new Map();
+      for (const event of events) {
+        for (const tag2 of event.tags || []) {
+          if (tag2.key !== "tag" && tag2.value && tag2.value.startsWith("http"))
+            continue;
+          const label = getTagLabel(tag2);
+          tagCounts.set(label, (tagCounts.get(label) || 0) + 1);
+        }
+      }
+      if (tagCounts.size === 0) {
+        container.innerHTML = "";
+        return;
+      }
+      const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
+      const bar = document.createElement("div");
+      bar.className = "already-tag-filter";
+      for (const [label] of sortedTags) {
+        const pill = document.createElement("button");
+        pill.className = "already-tag-pill" + (selectedTags.has(label) ? " already-tag-pill--active" : "");
+        pill.textContent = label;
+        pill.addEventListener("click", () => {
+          if (selectedTags.has(label)) {
+            selectedTags.delete(label);
+          } else {
+            selectedTags.add(label);
+          }
+          render(container, events);
+          onFilterChange();
+        });
+        bar.appendChild(pill);
+      }
+      if (selectedTags.size > 0) {
+        const clear = document.createElement("button");
+        clear.className = "already-tag-clear";
+        clear.textContent = clearLabel;
+        clear.addEventListener("click", () => {
+          selectedTags.clear();
+          render(container, events);
+          onFilterChange();
+        });
+        bar.appendChild(clear);
+      }
+      container.innerHTML = "";
+      container.appendChild(bar);
+    }
+    function getFilter() {
+      if (selectedTags.size === 0) return null;
+      return (event) => {
+        for (const tag2 of event.tags || []) {
+          const label = getTagLabel(tag2);
+          if (selectedTags.has(label)) return true;
+        }
+        return false;
+      };
+    }
+    function getSelectedTags() {
+      return new Set(selectedTags);
+    }
+    return { render, getFilter, getSelectedTags };
+  }
+
+  // src/ui/view-selector.js
+  var DEFAULT_VIEW_LABELS = {
+    month: "Month",
+    week: "Week",
+    day: "Day",
+    grid: "Grid",
+    list: "List"
+  };
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function createSvg() {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.5");
+    svg.setAttribute("aria-hidden", "true");
+    return svg;
+  }
+  function svgEl(tag2, attrs) {
+    const e = document.createElementNS(SVG_NS, tag2);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+  var VIEW_ICONS = {
+    month: () => {
+      const svg = createSvg();
+      svg.appendChild(
+        svgEl("rect", { x: "1", y: "3", width: "14", height: "12", rx: "1" })
+      );
+      svg.appendChild(svgEl("line", { x1: "1", y1: "7", x2: "15", y2: "7" }));
+      svg.appendChild(svgEl("line", { x1: "5.5", y1: "7", x2: "5.5", y2: "15" }));
+      svg.appendChild(
+        svgEl("line", { x1: "10.5", y1: "7", x2: "10.5", y2: "15" })
+      );
+      return svg;
+    },
+    week: () => {
+      const svg = createSvg();
+      svg.appendChild(
+        svgEl("rect", { x: "1", y: "1", width: "3", height: "14", rx: "0.5" })
+      );
+      svg.appendChild(
+        svgEl("rect", { x: "6.5", y: "1", width: "3", height: "14", rx: "0.5" })
+      );
+      svg.appendChild(
+        svgEl("rect", { x: "12", y: "1", width: "3", height: "14", rx: "0.5" })
+      );
+      return svg;
+    },
+    day: () => {
+      const svg = createSvg();
+      svg.appendChild(
+        svgEl("rect", { x: "3", y: "1", width: "10", height: "14", rx: "1" })
+      );
+      svg.appendChild(svgEl("line", { x1: "5.5", y1: "5", x2: "10.5", y2: "5" }));
+      svg.appendChild(svgEl("line", { x1: "5.5", y1: "8", x2: "10.5", y2: "8" }));
+      svg.appendChild(svgEl("line", { x1: "5.5", y1: "11", x2: "9", y2: "11" }));
+      return svg;
+    },
+    grid: () => {
+      const svg = createSvg();
+      svg.appendChild(
+        svgEl("rect", { x: "1", y: "1", width: "6", height: "6", rx: "1" })
+      );
+      svg.appendChild(
+        svgEl("rect", { x: "9", y: "1", width: "6", height: "6", rx: "1" })
+      );
+      svg.appendChild(
+        svgEl("rect", { x: "1", y: "9", width: "6", height: "6", rx: "1" })
+      );
+      svg.appendChild(
+        svgEl("rect", { x: "9", y: "9", width: "6", height: "6", rx: "1" })
+      );
+      return svg;
+    },
+    list: () => {
+      const svg = createSvg();
+      svg.appendChild(svgEl("line", { x1: "1", y1: "3", x2: "15", y2: "3" }));
+      svg.appendChild(svgEl("line", { x1: "1", y1: "8", x2: "15", y2: "8" }));
+      svg.appendChild(svgEl("line", { x1: "1", y1: "13", x2: "15", y2: "13" }));
+      return svg;
+    }
+  };
+  function renderViewSelector(container, views, activeView, isMobile, config) {
+    const i18n = config?.i18n || {};
+    const viewLabels = { ...DEFAULT_VIEW_LABELS, ...i18n.viewLabels };
+    const mobileHiddenViews = config?.mobileHiddenViews || ["week"];
+    const filtered = isMobile ? views.filter((v) => !mobileHiddenViews.includes(v)) : views;
+    const bar = document.createElement("div");
+    bar.className = "already-view-selector";
+    bar.setAttribute("role", "tablist");
+    for (const view of filtered) {
+      const tab = document.createElement("button");
+      tab.className = "already-view-tab" + (view === activeView ? " already-view-tab--active" : "");
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", view === activeView ? "true" : "false");
+      const iconFn = VIEW_ICONS[view];
+      if (iconFn) tab.appendChild(iconFn());
+      tab.appendChild(document.createTextNode(viewLabels[view] || view));
+      tab.addEventListener("click", () => setView(view, config));
+      bar.appendChild(tab);
+    }
+    container.innerHTML = "";
+    container.appendChild(bar);
   }
 
   // src/views/helpers.js
@@ -3430,7 +3853,9 @@ ${text}</tr>
     return events.filter((e) => !e.hidden);
   }
   function sortFeatured(events) {
-    return [...events].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    return [...events].sort(
+      (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+    );
   }
   function sortFeaturedByDate(events, timezone, locale) {
     const dateKey = (e) => {
@@ -3448,158 +3873,6 @@ ${text}</tr>
     );
   }
 
-  // src/views/month.js
-  function renderMonthView(container, events, timezone, currentDate, config) {
-    config = config || {};
-    const locale = config.locale;
-    const weekStartDay = config.weekStartDay || 0;
-    const maxEventsPerDay = config.maxEventsPerDay || 3;
-    const i18n = config.i18n || {};
-    const moreEventsTemplate = i18n.moreEvents || "+{count} more";
-    events = filterHidden(events);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month, weekStartDay);
-    const monthName = getMonthName(year, month, locale);
-    const dayNames = getDayNames(locale, weekStartDay);
-    const eventsByDate = {};
-    for (const event of events) {
-      const parts = getDatePartsInTz(event.start, timezone, locale);
-      const key = `${parts.year}-${parts.month}-${parts.day}`;
-      if (!eventsByDate[key]) eventsByDate[key] = [];
-      eventsByDate[key].push(event);
-    }
-    const grid = createElement("div", "already-month");
-    const nav = createElement("div", "already-month-nav");
-    const prevBtn = createElement("button", "already-month-prev", { "aria-label": "Previous month" });
-    prevBtn.textContent = "\u2039";
-    prevBtn.addEventListener("click", () => {
-      renderMonthView(container, events, timezone, new Date(year, month - 1, 1), config);
-    });
-    nav.appendChild(prevBtn);
-    const title = createElement("span", "already-month-title");
-    title.textContent = `${monthName} ${year}`;
-    nav.appendChild(title);
-    const nextBtn = createElement("button", "already-month-next", { "aria-label": "Next month" });
-    nextBtn.textContent = "\u203A";
-    nextBtn.addEventListener("click", () => {
-      renderMonthView(container, events, timezone, new Date(year, month + 1, 1), config);
-    });
-    nav.appendChild(nextBtn);
-    grid.appendChild(nav);
-    const headerRow = createElement("div", "already-month-header", { role: "row" });
-    for (const name of dayNames) {
-      const cell = createElement("div", "already-month-dayname");
-      cell.textContent = name;
-      headerRow.appendChild(cell);
-    }
-    grid.appendChild(headerRow);
-    const body = createElement("div", "already-month-body", { role: "grid" });
-    let row = createElement("div", "already-month-row", { role: "row" });
-    for (let i = 0; i < firstDay; i++) {
-      row.appendChild(createElement("div", "already-month-cell already-month-cell--empty", { role: "gridcell" }));
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cellDate = new Date(year, month, d);
-      const key = `${year}-${month}-${d}`;
-      const dayEvents = sortFeatured(eventsByDate[key] || []);
-      const today = isToday(cellDate);
-      const cell = createElement("div", null, { role: "gridcell" });
-      cell.className = "already-month-cell" + (today ? " already-month-cell--today" : "") + (dayEvents.length ? " already-month-cell--has-events" : "");
-      const dayNum = createElement("div", "already-month-day");
-      dayNum.textContent = d;
-      cell.appendChild(dayNum);
-      for (const event of dayEvents.slice(0, maxEventsPerDay)) {
-        const chip = createElement("div", "already-month-chip" + (event.featured ? " already-month-chip--featured" : ""));
-        chip.textContent = event.title;
-        bindEventClick(chip, event, "month", config, { stopPropagation: true });
-        cell.appendChild(chip);
-      }
-      if (dayEvents.length > maxEventsPerDay) {
-        const more = createElement("div", "already-month-more");
-        more.textContent = moreEventsTemplate.replace("{count}", dayEvents.length - maxEventsPerDay);
-        cell.appendChild(more);
-      }
-      row.appendChild(cell);
-      if ((firstDay + d) % 7 === 0) {
-        body.appendChild(row);
-        row = createElement("div", "already-month-row", { role: "row" });
-      }
-    }
-    const remaining = (firstDay + daysInMonth) % 7;
-    if (remaining > 0) {
-      for (let i = remaining; i < 7; i++) {
-        row.appendChild(createElement("div", "already-month-cell already-month-cell--empty", { role: "gridcell" }));
-      }
-      body.appendChild(row);
-    }
-    grid.appendChild(body);
-    container.innerHTML = "";
-    container.appendChild(grid);
-  }
-
-  // src/views/week.js
-  function renderWeekView(container, events, timezone, currentDate, config) {
-    config = config || {};
-    const locale = config.locale;
-    const weekStartDay = config.weekStartDay || 0;
-    const dates = getWeekDates(currentDate, weekStartDay);
-    events = filterHidden(events);
-    const week = createElement("div", "already-week");
-    const nav = createElement("div", "already-week-nav");
-    const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
-    const endLabel = formatDateShort(dates[6].toISOString(), timezone, locale);
-    const prevBtn = createElement("button", "already-week-prev", { "aria-label": "Previous week" });
-    prevBtn.textContent = "\u2039";
-    prevBtn.addEventListener("click", () => {
-      const prev = new Date(currentDate);
-      prev.setDate(prev.getDate() - 7);
-      renderWeekView(container, events, timezone, prev, config);
-    });
-    nav.appendChild(prevBtn);
-    const title = createElement("span", "already-week-title");
-    title.textContent = `${startLabel} \u2013 ${endLabel}`;
-    nav.appendChild(title);
-    const nextBtn = createElement("button", "already-week-next", { "aria-label": "Next week" });
-    nextBtn.textContent = "\u203A";
-    nextBtn.addEventListener("click", () => {
-      const next = new Date(currentDate);
-      next.setDate(next.getDate() + 7);
-      renderWeekView(container, events, timezone, next, config);
-    });
-    nav.appendChild(nextBtn);
-    week.appendChild(nav);
-    const columns = createElement("div", "already-week-columns");
-    const dayFmt = new Intl.DateTimeFormat(locale || "en-US", { weekday: "short" });
-    for (const date of dates) {
-      const col = createElement("div", "already-week-col" + (isToday(date) ? " already-week-col--today" : ""));
-      const header = createElement("div", "already-week-col-header");
-      const dayName = dayFmt.format(date);
-      const dayNameEl = createElement("span", "already-week-dayname");
-      dayNameEl.textContent = dayName;
-      header.appendChild(dayNameEl);
-      const dayNumEl = createElement("span", "already-week-daynum");
-      dayNumEl.textContent = date.getDate();
-      header.appendChild(dayNumEl);
-      col.appendChild(header);
-      const dayEvents = sortFeatured(events.filter((e) => {
-        const parts = getDatePartsInTz(e.start, timezone, locale);
-        return parts.year === date.getFullYear() && parts.month === date.getMonth() && parts.day === date.getDate();
-      }));
-      for (const event of dayEvents) {
-        const block2 = createElement("div", "already-week-event" + (event.featured ? " already-week-event--featured" : ""));
-        block2.textContent = event.title;
-        bindEventClick(block2, event, "week", config);
-        col.appendChild(block2);
-      }
-      columns.appendChild(col);
-    }
-    week.appendChild(columns);
-    container.innerHTML = "";
-    container.appendChild(week);
-  }
-
   // src/views/day.js
   function renderDayView(container, events, timezone, currentDate, config) {
     config = config || {};
@@ -3610,7 +3883,9 @@ ${text}</tr>
     events = filterHidden(events);
     const day = createElement("div", "already-day");
     const nav = createElement("div", "already-day-nav");
-    const prevBtn = createElement("button", "already-day-prev", { "aria-label": "Previous day" });
+    const prevBtn = createElement("button", "already-day-prev", {
+      "aria-label": "Previous day"
+    });
     prevBtn.textContent = "\u2039";
     prevBtn.addEventListener("click", () => {
       const prev = new Date(currentDate);
@@ -3621,7 +3896,9 @@ ${text}</tr>
     const title = createElement("span", "already-day-title");
     title.textContent = formatDate(currentDate.toISOString(), timezone, locale);
     nav.appendChild(title);
-    const nextBtn = createElement("button", "already-day-next", { "aria-label": "Next day" });
+    const nextBtn = createElement("button", "already-day-next", {
+      "aria-label": "Next day"
+    });
     nextBtn.textContent = "\u203A";
     nextBtn.addEventListener("click", () => {
       const next = new Date(currentDate);
@@ -3631,7 +3908,9 @@ ${text}</tr>
     nav.appendChild(nextBtn);
     day.appendChild(nav);
     const parseEventDate = (start) => /^\d{4}-\d{2}-\d{2}$/.test(start) ? /* @__PURE__ */ new Date(`${start}T00:00:00`) : new Date(start);
-    let dayEvents = events.filter((e) => isSameDay(parseEventDate(e.start), currentDate));
+    let dayEvents = events.filter(
+      (e) => isSameDay(parseEventDate(e.start), currentDate)
+    );
     dayEvents = sortFeatured(dayEvents);
     if (dayEvents.length === 0) {
       const empty = createElement("div", "already-day-empty");
@@ -3660,6 +3939,292 @@ ${text}</tr>
     }
     container.innerHTML = "";
     container.appendChild(day);
+  }
+
+  // src/views/lightbox.js
+  var currentClose = null;
+  function openLightbox(images, startIndex, altText) {
+    if (!images || images.length === 0) return;
+    if (currentClose) currentClose();
+    const previousFocus = document.activeElement;
+    const savedOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    let current = (startIndex % images.length + images.length) % images.length;
+    let counterEl = null;
+    const overlay = createElement("div", "already-lightbox", {
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-label": "Image viewer"
+    });
+    const img = document.createElement("img");
+    img.className = "already-lightbox-img";
+    img.src = images[current];
+    img.alt = altText;
+    img.setAttribute("tabindex", "0");
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-label", "Close image viewer");
+    img.onerror = () => {
+      if (images.length > 1) {
+        goTo(current + 1);
+      } else {
+        close();
+      }
+    };
+    const closeBtn = createElement("button", "already-lightbox-close", {
+      "aria-label": "Close"
+    });
+    closeBtn.textContent = "\xD7";
+    function close() {
+      document.removeEventListener("keydown", onKeydown);
+      currentClose = null;
+      document.body.style.overflow = savedOverflow;
+      overlay.remove();
+      if (previousFocus?.focus) previousFocus.focus();
+    }
+    function goTo(idx) {
+      current = (idx + images.length) % images.length;
+      img.src = images[current];
+      if (counterEl) counterEl.textContent = `${current + 1} / ${images.length}`;
+    }
+    function onKeydown(e) {
+      if (e.key === "Escape") {
+        close();
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        goTo(current - 1);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        goTo(current + 1);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusable = overlay.querySelectorAll('button, [role="button"]');
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    }
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close();
+    });
+    img.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close();
+    });
+    overlay.addEventListener("click", close);
+    document.addEventListener("keydown", onKeydown);
+    currentClose = close;
+    overlay.appendChild(closeBtn);
+    overlay.appendChild(img);
+    if (images.length > 1) {
+      const prevBtn = createElement("button", "already-lightbox-prev", {
+        "aria-label": "Previous image"
+      });
+      prevBtn.textContent = "\u2039";
+      prevBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        goTo(current - 1);
+      });
+      const nextBtn = createElement("button", "already-lightbox-next", {
+        "aria-label": "Next image"
+      });
+      nextBtn.textContent = "\u203A";
+      nextBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        goTo(current + 1);
+      });
+      counterEl = createElement("div", "already-lightbox-counter");
+      counterEl.textContent = `${current + 1} / ${images.length}`;
+      overlay.appendChild(prevBtn);
+      overlay.appendChild(nextBtn);
+      overlay.appendChild(counterEl);
+    }
+    document.body.appendChild(overlay);
+    closeBtn.focus();
+  }
+
+  // src/views/detail.js
+  function renderGallery(images, altText) {
+    const gallery = createElement("div", "already-detail-gallery");
+    let loadedImages = [...images];
+    let current = 0;
+    let counter = null;
+    const imgEl = document.createElement("img");
+    imgEl.className = "already-detail-gallery-img";
+    imgEl.src = images[0];
+    imgEl.alt = altText;
+    imgEl.setAttribute("loading", "lazy");
+    imgEl.onerror = () => {
+      loadedImages = loadedImages.filter((u) => u !== imgEl.src);
+      if (loadedImages.length === 0) {
+        gallery.closest(".already-detail-image")?.remove();
+        return;
+      }
+      current = 0;
+      imgEl.src = loadedImages[0];
+      if (counter) counter.textContent = `1 / ${loadedImages.length}`;
+    };
+    gallery.appendChild(imgEl);
+    const zoomBadge = createElement("div", "already-detail-gallery-zoom", {
+      "aria-hidden": "true"
+    });
+    zoomBadge.textContent = "\u2315";
+    gallery.appendChild(zoomBadge);
+    imgEl.style.cursor = "zoom-in";
+    imgEl.addEventListener("click", () => {
+      openLightbox(loadedImages, current, altText);
+    });
+    if (images.length <= 1) return gallery;
+    counter = createElement("div", "already-detail-gallery-counter");
+    counter.textContent = `1 / ${images.length}`;
+    gallery.appendChild(counter);
+    const prevBtn = createElement("button", "already-detail-gallery-prev", {
+      "aria-label": "Previous image"
+    });
+    prevBtn.textContent = "\u2039";
+    gallery.appendChild(prevBtn);
+    const nextBtn = createElement("button", "already-detail-gallery-next", {
+      "aria-label": "Next image"
+    });
+    nextBtn.textContent = "\u203A";
+    gallery.appendChild(nextBtn);
+    function goTo(idx) {
+      current = (idx + loadedImages.length) % loadedImages.length;
+      imgEl.src = loadedImages[current];
+      counter.textContent = `${current + 1} / ${loadedImages.length}`;
+    }
+    prevBtn.addEventListener("click", () => goTo(current - 1));
+    nextBtn.addEventListener("click", () => goTo(current + 1));
+    gallery.setAttribute("tabindex", "0");
+    gallery.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") {
+        goTo(current - 1);
+        e.preventDefault();
+      }
+      if (e.key === "ArrowRight") {
+        goTo(current + 1);
+        e.preventDefault();
+      }
+    });
+    return gallery;
+  }
+  function renderDetailView(container, event, timezone, onBack, config) {
+    config = config || {};
+    const locale = config.locale;
+    const i18n = config.i18n || {};
+    const backLabel = i18n.back || "\u2190 Back";
+    const locationTemplate = config.locationLinkTemplate || "https://maps.google.com/?q={location}";
+    const images = event.images && event.images.length > 0 ? event.images : event.image ? [event.image] : [];
+    const hasImages = images.length > 0;
+    const detail = createElement("div", "already-detail");
+    const backBtn = createElement("button", "already-detail-back");
+    backBtn.textContent = backLabel;
+    backBtn.addEventListener("click", onBack);
+    detail.appendChild(backBtn);
+    const body = createElement(
+      "div",
+      hasImages ? "already-detail-body already-detail-body--has-image" : "already-detail-body"
+    );
+    if (hasImages) {
+      const galleryCol = createElement("div", "already-detail-image");
+      galleryCol.appendChild(renderGallery(images, event.title));
+      body.appendChild(galleryCol);
+    }
+    const content = createElement("div", "already-detail-content");
+    const titleEl = createElement("h2", "already-detail-title");
+    titleEl.textContent = event.title;
+    content.appendChild(titleEl);
+    const meta = createElement("div", "already-detail-meta");
+    const dateStr = event.allDay ? formatDate(event.start, timezone, locale) : formatDatetime(event.start, timezone, locale);
+    const dateDiv = createElement("div", "already-detail-date");
+    dateDiv.textContent = dateStr;
+    meta.appendChild(dateDiv);
+    if (event.location) {
+      const mapsUrl = locationTemplate.replace(
+        "{location}",
+        encodeURIComponent(event.location)
+      );
+      const locDiv = createElement("div", "already-detail-location");
+      const locLink = createElement("a", null, {
+        href: mapsUrl,
+        target: "_blank",
+        rel: "noopener"
+      });
+      locLink.textContent = event.location;
+      locDiv.appendChild(locLink);
+      meta.appendChild(locDiv);
+    }
+    content.appendChild(meta);
+    const scalarAndTextTags = (event.tags || []).filter((t) => {
+      if (t.key === "tag") return true;
+      if (t.value && !t.value.startsWith("http")) return true;
+      return false;
+    });
+    if (scalarAndTextTags.length > 0) {
+      const tagsDiv = createElement("div", "already-detail-tags");
+      for (const tag2 of scalarAndTextTags) {
+        const span = createElement("span", "already-detail-tag");
+        span.textContent = tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
+        tagsDiv.appendChild(span);
+      }
+      content.appendChild(tagsDiv);
+    }
+    if (event.description) {
+      const desc = createElement("div", "already-detail-description");
+      desc.innerHTML = renderDescription(event.description, config);
+      content.appendChild(desc);
+    }
+    if (event.attachments && event.attachments.length > 0) {
+      const attachDiv = createElement("div", "already-detail-attachments");
+      for (const att of event.attachments) {
+        const a = createElement("a", "already-detail-attachment", {
+          href: att.url,
+          target: "_blank",
+          rel: "noopener"
+        });
+        a.textContent = att.label;
+        attachDiv.appendChild(a);
+      }
+      content.appendChild(attachDiv);
+    }
+    const urlTags = (event.tags || []).filter(
+      (t) => t.key !== "tag" && t.value && t.value.startsWith("http")
+    );
+    const titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const allLinks = [
+      ...event.links || [],
+      ...urlTags.map((t) => ({ label: titleCase(t.key), url: t.value }))
+    ];
+    if (allLinks.length > 0) {
+      const linksDiv = createElement("div", "already-detail-links");
+      for (const link2 of allLinks) {
+        const a = createElement("a", "already-detail-link", {
+          href: link2.url,
+          target: "_blank",
+          rel: "noopener"
+        });
+        a.textContent = link2.label;
+        linksDiv.appendChild(a);
+      }
+      content.appendChild(linksDiv);
+    }
+    body.appendChild(content);
+    detail.appendChild(body);
+    container.innerHTML = "";
+    container.appendChild(detail);
+    backBtn.focus();
   }
 
   // src/views/grid.js
@@ -3736,492 +4301,202 @@ ${text}</tr>
     container.appendChild(list2);
   }
 
-  // src/views/lightbox.js
-  var currentClose = null;
-  function openLightbox(images, startIndex, altText) {
-    if (!images || images.length === 0) return;
-    if (currentClose) currentClose();
-    const previousFocus = document.activeElement;
-    const savedOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    let current = (startIndex % images.length + images.length) % images.length;
-    let counterEl = null;
-    const overlay = createElement("div", "already-lightbox", {
-      role: "dialog",
-      "aria-modal": "true",
-      "aria-label": "Image viewer"
-    });
-    const img = document.createElement("img");
-    img.className = "already-lightbox-img";
-    img.src = images[current];
-    img.alt = altText;
-    img.setAttribute("tabindex", "0");
-    img.setAttribute("role", "button");
-    img.setAttribute("aria-label", "Close image viewer");
-    img.onerror = () => {
-      if (images.length > 1) {
-        goTo(current + 1);
-      } else {
-        close();
-      }
-    };
-    const closeBtn = createElement("button", "already-lightbox-close", { "aria-label": "Close" });
-    closeBtn.textContent = "\xD7";
-    function close() {
-      document.removeEventListener("keydown", onKeydown);
-      currentClose = null;
-      document.body.style.overflow = savedOverflow;
-      overlay.remove();
-      if (previousFocus && previousFocus.focus) previousFocus.focus();
-    }
-    function goTo(idx) {
-      current = (idx + images.length) % images.length;
-      img.src = images[current];
-      if (counterEl) counterEl.textContent = `${current + 1} / ${images.length}`;
-    }
-    function onKeydown(e) {
-      if (e.key === "Escape") {
-        close();
-        e.preventDefault();
-        return;
-      }
-      if (e.key === "ArrowLeft") {
-        goTo(current - 1);
-        e.preventDefault();
-        return;
-      }
-      if (e.key === "ArrowRight") {
-        goTo(current + 1);
-        e.preventDefault();
-        return;
-      }
-      if (e.key === "Tab") {
-        const focusable = overlay.querySelectorAll('button, [role="button"]');
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          last.focus();
-          e.preventDefault();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          first.focus();
-          e.preventDefault();
-        }
-      }
-    }
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      close();
-    });
-    img.addEventListener("click", (e) => {
-      e.stopPropagation();
-      close();
-    });
-    overlay.addEventListener("click", close);
-    document.addEventListener("keydown", onKeydown);
-    currentClose = close;
-    overlay.appendChild(closeBtn);
-    overlay.appendChild(img);
-    if (images.length > 1) {
-      const prevBtn = createElement("button", "already-lightbox-prev", { "aria-label": "Previous image" });
-      prevBtn.textContent = "\u2039";
-      prevBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        goTo(current - 1);
-      });
-      const nextBtn = createElement("button", "already-lightbox-next", { "aria-label": "Next image" });
-      nextBtn.textContent = "\u203A";
-      nextBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        goTo(current + 1);
-      });
-      counterEl = createElement("div", "already-lightbox-counter");
-      counterEl.textContent = `${current + 1} / ${images.length}`;
-      overlay.appendChild(prevBtn);
-      overlay.appendChild(nextBtn);
-      overlay.appendChild(counterEl);
-    }
-    document.body.appendChild(overlay);
-    closeBtn.focus();
-  }
-
-  // src/views/detail.js
-  function renderGallery(images, altText) {
-    const gallery = createElement("div", "already-detail-gallery");
-    let loadedImages = [...images];
-    let current = 0;
-    let counter = null;
-    const imgEl = document.createElement("img");
-    imgEl.className = "already-detail-gallery-img";
-    imgEl.src = images[0];
-    imgEl.alt = altText;
-    imgEl.setAttribute("loading", "lazy");
-    imgEl.onerror = () => {
-      loadedImages = loadedImages.filter((u) => u !== imgEl.src);
-      if (loadedImages.length === 0) {
-        gallery.closest(".already-detail-image")?.remove();
-        return;
-      }
-      current = 0;
-      imgEl.src = loadedImages[0];
-      if (counter) counter.textContent = `1 / ${loadedImages.length}`;
-    };
-    gallery.appendChild(imgEl);
-    const zoomBadge = createElement("div", "already-detail-gallery-zoom", { "aria-hidden": "true" });
-    zoomBadge.textContent = "\u2315";
-    gallery.appendChild(zoomBadge);
-    imgEl.style.cursor = "zoom-in";
-    imgEl.addEventListener("click", () => {
-      openLightbox(loadedImages, current, altText);
-    });
-    if (images.length <= 1) return gallery;
-    counter = createElement("div", "already-detail-gallery-counter");
-    counter.textContent = `1 / ${images.length}`;
-    gallery.appendChild(counter);
-    const prevBtn = createElement("button", "already-detail-gallery-prev", { "aria-label": "Previous image" });
-    prevBtn.textContent = "\u2039";
-    gallery.appendChild(prevBtn);
-    const nextBtn = createElement("button", "already-detail-gallery-next", { "aria-label": "Next image" });
-    nextBtn.textContent = "\u203A";
-    gallery.appendChild(nextBtn);
-    function goTo(idx) {
-      current = (idx + loadedImages.length) % loadedImages.length;
-      imgEl.src = loadedImages[current];
-      counter.textContent = `${current + 1} / ${loadedImages.length}`;
-    }
-    prevBtn.addEventListener("click", () => goTo(current - 1));
-    nextBtn.addEventListener("click", () => goTo(current + 1));
-    gallery.setAttribute("tabindex", "0");
-    gallery.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft") {
-        goTo(current - 1);
-        e.preventDefault();
-      }
-      if (e.key === "ArrowRight") {
-        goTo(current + 1);
-        e.preventDefault();
-      }
-    });
-    return gallery;
-  }
-  function renderDetailView(container, event, timezone, onBack, config) {
+  // src/views/month.js
+  function renderMonthView(container, events, timezone, currentDate, config) {
     config = config || {};
     const locale = config.locale;
+    const weekStartDay = config.weekStartDay || 0;
+    const maxEventsPerDay = config.maxEventsPerDay || 3;
     const i18n = config.i18n || {};
-    const backLabel = i18n.back || "\u2190 Back";
-    const locationTemplate = config.locationLinkTemplate || "https://maps.google.com/?q={location}";
-    const images = event.images && event.images.length > 0 ? event.images : event.image ? [event.image] : [];
-    const hasImages = images.length > 0;
-    const detail = createElement("div", "already-detail");
-    const backBtn = createElement("button", "already-detail-back");
-    backBtn.textContent = backLabel;
-    backBtn.addEventListener("click", onBack);
-    detail.appendChild(backBtn);
-    const body = createElement("div", hasImages ? "already-detail-body already-detail-body--has-image" : "already-detail-body");
-    if (hasImages) {
-      const galleryCol = createElement("div", "already-detail-image");
-      galleryCol.appendChild(renderGallery(images, event.title));
-      body.appendChild(galleryCol);
-    }
-    const content = createElement("div", "already-detail-content");
-    const titleEl = createElement("h2", "already-detail-title");
-    titleEl.textContent = event.title;
-    content.appendChild(titleEl);
-    const meta = createElement("div", "already-detail-meta");
-    const dateStr = event.allDay ? formatDate(event.start, timezone, locale) : formatDatetime(event.start, timezone, locale);
-    const dateDiv = createElement("div", "already-detail-date");
-    dateDiv.textContent = dateStr;
-    meta.appendChild(dateDiv);
-    if (event.location) {
-      const mapsUrl = locationTemplate.replace("{location}", encodeURIComponent(event.location));
-      const locDiv = createElement("div", "already-detail-location");
-      const locLink = createElement("a", null, { href: mapsUrl, target: "_blank", rel: "noopener" });
-      locLink.textContent = event.location;
-      locDiv.appendChild(locLink);
-      meta.appendChild(locDiv);
-    }
-    content.appendChild(meta);
-    const scalarAndTextTags = (event.tags || []).filter((t) => {
-      if (t.key === "tag") return true;
-      if (t.value && !t.value.startsWith("http")) return true;
-      return false;
-    });
-    if (scalarAndTextTags.length > 0) {
-      const tagsDiv = createElement("div", "already-detail-tags");
-      for (const tag2 of scalarAndTextTags) {
-        const span = createElement("span", "already-detail-tag");
-        span.textContent = tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
-        tagsDiv.appendChild(span);
-      }
-      content.appendChild(tagsDiv);
-    }
-    if (event.description) {
-      const desc = createElement("div", "already-detail-description");
-      desc.innerHTML = renderDescription(event.description, config);
-      content.appendChild(desc);
-    }
-    if (event.attachments && event.attachments.length > 0) {
-      const attachDiv = createElement("div", "already-detail-attachments");
-      for (const att of event.attachments) {
-        const a = createElement("a", "already-detail-attachment", { href: att.url, target: "_blank", rel: "noopener" });
-        a.textContent = att.label;
-        attachDiv.appendChild(a);
-      }
-      content.appendChild(attachDiv);
-    }
-    const urlTags = (event.tags || []).filter((t) => t.key !== "tag" && t.value && t.value.startsWith("http"));
-    const titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    const allLinks = [...event.links || [], ...urlTags.map((t) => ({ label: titleCase(t.key), url: t.value }))];
-    if (allLinks.length > 0) {
-      const linksDiv = createElement("div", "already-detail-links");
-      for (const link2 of allLinks) {
-        const a = createElement("a", "already-detail-link", { href: link2.url, target: "_blank", rel: "noopener" });
-        a.textContent = link2.label;
-        linksDiv.appendChild(a);
-      }
-      content.appendChild(linksDiv);
-    }
-    body.appendChild(content);
-    detail.appendChild(body);
-    container.innerHTML = "";
-    container.appendChild(detail);
-    backBtn.focus();
-  }
-
-  // src/ui/header.js
-  function renderHeader(container, calendarData, config) {
-    if (!config.showHeader) {
-      container.innerHTML = "";
-      return;
-    }
-    const name = config.headerTitle ?? calendarData?.name ?? "";
-    const description = config.headerDescription ?? calendarData?.description ?? "";
-    if (!name && !description) {
-      container.innerHTML = "";
-      return;
-    }
-    const i18n = config.i18n || {};
-    const subscribeLabel = i18n.subscribe || "Subscribe";
-    let subscribeUrl = config.subscribeUrl || null;
-    if (!subscribeUrl && config.google?.calendarId) {
-      const cid = btoa(config.google.calendarId).replace(/=+$/, "");
-      subscribeUrl = `https://calendar.google.com/calendar/u/0?cid=${cid}`;
-    }
-    if (!subscribeUrl && calendarData?.calendarId) {
-      const cid = btoa(calendarData.calendarId).replace(/=+$/, "");
-      subscribeUrl = `https://calendar.google.com/calendar/u/0?cid=${cid}`;
-    }
-    const header = document.createElement("div");
-    header.className = "already-header";
-    if (config.headerIcon) {
-      const icon = document.createElement("img");
-      icon.className = "already-header-icon";
-      icon.src = config.headerIcon;
-      icon.alt = "";
-      icon.loading = "lazy";
-      header.appendChild(icon);
-    }
-    const textCol = document.createElement("div");
-    textCol.className = "already-header-text";
-    if (name) {
-      const h = document.createElement("h2");
-      h.className = "already-header-name";
-      h.textContent = name;
-      textCol.appendChild(h);
-    }
-    if (description) {
-      const p = document.createElement("p");
-      p.className = "already-header-description";
-      if (subscribeUrl && /subscribe/i.test(description)) {
-        p.innerHTML = description.replace(
-          /(subscribe)/i,
-          `<a href="${subscribeUrl}" target="_blank" rel="noopener" class="already-header-description-link">$1</a>`
-        );
-      } else {
-        p.textContent = description;
-      }
-      textCol.appendChild(p);
-    }
-    header.appendChild(textCol);
-    if (subscribeUrl) {
-      const btn = document.createElement("a");
-      btn.className = "already-header-subscribe";
-      btn.href = subscribeUrl;
-      btn.target = "_blank";
-      btn.rel = "noopener";
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 1v2M11 1v2M2 6h12M3 3h10a1 1 0 011 1v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8v4M6 10h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> ${escapeHtml(subscribeLabel)}`;
-      header.appendChild(btn);
-    }
-    container.innerHTML = "";
-    container.appendChild(header);
-  }
-
-  // src/ui/tag-filter.js
-  function createTagFilter(onFilterChange, config) {
-    const selectedTags = /* @__PURE__ */ new Set();
-    const clearLabel = config && config.i18n && config.i18n.clearFilter || "Clear";
-    function getTagLabel(tag2) {
-      return tag2.key === "tag" ? tag2.value : `${tag2.key}: ${tag2.value}`;
-    }
-    function render(container, events) {
-      const tagCounts = /* @__PURE__ */ new Map();
-      for (const event of events) {
-        for (const tag2 of event.tags || []) {
-          if (tag2.key !== "tag" && tag2.value && tag2.value.startsWith("http")) continue;
-          const label = getTagLabel(tag2);
-          tagCounts.set(label, (tagCounts.get(label) || 0) + 1);
-        }
-      }
-      if (tagCounts.size === 0) {
-        container.innerHTML = "";
-        return;
-      }
-      const sortedTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]);
-      const bar = document.createElement("div");
-      bar.className = "already-tag-filter";
-      for (const [label] of sortedTags) {
-        const pill = document.createElement("button");
-        pill.className = "already-tag-pill" + (selectedTags.has(label) ? " already-tag-pill--active" : "");
-        pill.textContent = label;
-        pill.addEventListener("click", () => {
-          if (selectedTags.has(label)) {
-            selectedTags.delete(label);
-          } else {
-            selectedTags.add(label);
-          }
-          render(container, events);
-          onFilterChange();
-        });
-        bar.appendChild(pill);
-      }
-      if (selectedTags.size > 0) {
-        const clear = document.createElement("button");
-        clear.className = "already-tag-clear";
-        clear.textContent = clearLabel;
-        clear.addEventListener("click", () => {
-          selectedTags.clear();
-          render(container, events);
-          onFilterChange();
-        });
-        bar.appendChild(clear);
-      }
-      container.innerHTML = "";
-      container.appendChild(bar);
-    }
-    function getFilter() {
-      if (selectedTags.size === 0) return null;
-      return (event) => {
-        for (const tag2 of event.tags || []) {
-          const label = getTagLabel(tag2);
-          if (selectedTags.has(label)) return true;
-        }
-        return false;
-      };
-    }
-    function getSelectedTags() {
-      return new Set(selectedTags);
-    }
-    return { render, getFilter, getSelectedTags };
-  }
-
-  // src/ui/sticky.js
-  var ALL_ON = { header: true, viewSelector: true, tagFilter: true };
-  var ALL_OFF = { header: false, viewSelector: false, tagFilter: false };
-  function resolveSticky(value) {
-    if (value === false) return { ...ALL_OFF };
-    if (value === true || value === void 0 || value === null || typeof value !== "object") {
-      return { ...ALL_ON };
-    }
-    return {
-      header: value.header !== false,
-      viewSelector: value.viewSelector !== false,
-      tagFilter: value.tagFilter !== false
-    };
-  }
-  function applyStickyClasses(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
-    const containers = [
-      [stickyConfig.header, headerContainer],
-      [stickyConfig.viewSelector, selectorContainer],
-      [stickyConfig.tagFilter, tagFilterContainer]
-    ];
-    for (const [enabled, container] of containers) {
-      container.classList.toggle("already-sticky", enabled);
-    }
-  }
-  function updateStickyOffsets(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
-    let offset = 0;
-    if (stickyConfig.header && headerContainer.classList.contains("already-sticky")) {
-      headerContainer.style.top = offset + "px";
-      offset += headerContainer.offsetHeight;
-    }
-    if (stickyConfig.viewSelector && selectorContainer.classList.contains("already-sticky")) {
-      selectorContainer.style.top = offset + "px";
-      offset += selectorContainer.offsetHeight;
-    }
-    if (stickyConfig.tagFilter && tagFilterContainer.classList.contains("already-sticky")) {
-      tagFilterContainer.style.top = offset + "px";
-    }
-  }
-
-  // src/ui/pagination.js
-  function paginateEvents(events, showPast, pageSize, paginationState) {
-    if (!events || events.length === 0) {
-      return { visible: [], hasMoreFuture: false, hasMorePast: false, remainingFuture: 0, remainingPast: 0 };
-    }
-    if (!showPast) {
-      const limit = pageSize + paginationState.futureCount;
-      const visible2 = events.slice(0, limit);
-      const remainingFuture2 = Math.max(0, events.length - limit);
-      return {
-        visible: visible2,
-        hasMoreFuture: remainingFuture2 > 0,
-        hasMorePast: false,
-        remainingFuture: remainingFuture2,
-        remainingPast: 0
-      };
-    }
-    const past = [];
-    const future = [];
+    const moreEventsTemplate = i18n.moreEvents || "+{count} more";
+    events = filterHidden(events);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month, weekStartDay);
+    const monthName = getMonthName(year, month, locale);
+    const dayNames = getDayNames(locale, weekStartDay);
+    const eventsByDate = {};
     for (const event of events) {
-      if (isPast(event.end || event.start)) {
-        past.push(event);
-      } else {
-        future.push(event);
+      const parts = getDatePartsInTz(event.start, timezone, locale);
+      const key = `${parts.year}-${parts.month}-${parts.day}`;
+      if (!eventsByDate[key]) eventsByDate[key] = [];
+      eventsByDate[key].push(event);
+    }
+    const grid = createElement("div", "already-month");
+    const nav = createElement("div", "already-month-nav");
+    const prevBtn = createElement("button", "already-month-prev", {
+      "aria-label": "Previous month"
+    });
+    prevBtn.textContent = "\u2039";
+    prevBtn.addEventListener("click", () => {
+      renderMonthView(
+        container,
+        events,
+        timezone,
+        new Date(year, month - 1, 1),
+        config
+      );
+    });
+    nav.appendChild(prevBtn);
+    const title = createElement("span", "already-month-title");
+    title.textContent = `${monthName} ${year}`;
+    nav.appendChild(title);
+    const nextBtn = createElement("button", "already-month-next", {
+      "aria-label": "Next month"
+    });
+    nextBtn.textContent = "\u203A";
+    nextBtn.addEventListener("click", () => {
+      renderMonthView(
+        container,
+        events,
+        timezone,
+        new Date(year, month + 1, 1),
+        config
+      );
+    });
+    nav.appendChild(nextBtn);
+    grid.appendChild(nav);
+    const headerRow = createElement("div", "already-month-header", {
+      role: "row"
+    });
+    for (const name of dayNames) {
+      const cell = createElement("div", "already-month-dayname");
+      cell.textContent = name;
+      headerRow.appendChild(cell);
+    }
+    grid.appendChild(headerRow);
+    const body = createElement("div", "already-month-body", { role: "grid" });
+    let row = createElement("div", "already-month-row", { role: "row" });
+    for (let i = 0; i < firstDay; i++) {
+      row.appendChild(
+        createElement("div", "already-month-cell already-month-cell--empty", {
+          role: "gridcell"
+        })
+      );
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cellDate = new Date(year, month, d);
+      const key = `${year}-${month}-${d}`;
+      const dayEvents = sortFeatured(eventsByDate[key] || []);
+      const today = isToday(cellDate);
+      const cell = createElement("div", null, { role: "gridcell" });
+      cell.className = "already-month-cell" + (today ? " already-month-cell--today" : "") + (dayEvents.length ? " already-month-cell--has-events" : "");
+      const dayNum = createElement("div", "already-month-day");
+      dayNum.textContent = d;
+      cell.appendChild(dayNum);
+      for (const event of dayEvents.slice(0, maxEventsPerDay)) {
+        const chip = createElement(
+          "div",
+          "already-month-chip" + (event.featured ? " already-month-chip--featured" : "")
+        );
+        chip.textContent = event.title;
+        bindEventClick(chip, event, "month", config, { stopPropagation: true });
+        cell.appendChild(chip);
+      }
+      if (dayEvents.length > maxEventsPerDay) {
+        const more = createElement("div", "already-month-more");
+        more.textContent = moreEventsTemplate.replace(
+          "{count}",
+          dayEvents.length - maxEventsPerDay
+        );
+        cell.appendChild(more);
+      }
+      row.appendChild(cell);
+      if ((firstDay + d) % 7 === 0) {
+        body.appendChild(row);
+        row = createElement("div", "already-month-row", { role: "row" });
       }
     }
-    const pastReversed = [...past].reverse();
-    const pastLimit = pageSize + paginationState.pastCount;
-    const visiblePast = pastReversed.slice(0, pastLimit);
-    const remainingPast = Math.max(0, pastReversed.length - pastLimit);
-    const futureLimit = pageSize + paginationState.futureCount;
-    const visibleFuture = future.slice(0, futureLimit);
-    const remainingFuture = Math.max(0, future.length - futureLimit);
-    const visiblePastChronological = [...visiblePast].reverse();
-    const visible = [...visiblePastChronological, ...visibleFuture];
-    return {
-      visible,
-      hasMoreFuture: remainingFuture > 0,
-      hasMorePast: remainingPast > 0,
-      remainingFuture,
-      remainingPast
-    };
+    const remaining = (firstDay + daysInMonth) % 7;
+    if (remaining > 0) {
+      for (let i = remaining; i < 7; i++) {
+        row.appendChild(
+          createElement("div", "already-month-cell already-month-cell--empty", {
+            role: "gridcell"
+          })
+        );
+      }
+      body.appendChild(row);
+    }
+    grid.appendChild(body);
+    container.innerHTML = "";
+    container.appendChild(grid);
   }
-  function renderPaginationButtons(topContainer, bottomContainer, paginated, i18n, callbacks) {
-    topContainer.innerHTML = "";
-    bottomContainer.innerHTML = "";
-    if (paginated.hasMorePast) {
-      const btn = document.createElement("button");
-      btn.className = "already-show-earlier";
-      btn.textContent = `${i18n.showEarlier || "Show earlier"} (${paginated.remainingPast} remaining)`;
-      btn.addEventListener("click", callbacks.onShowEarlier);
-      topContainer.appendChild(btn);
+
+  // src/views/week.js
+  function renderWeekView(container, events, timezone, currentDate, config) {
+    config = config || {};
+    const locale = config.locale;
+    const weekStartDay = config.weekStartDay || 0;
+    const dates = getWeekDates(currentDate, weekStartDay);
+    events = filterHidden(events);
+    const week = createElement("div", "already-week");
+    const nav = createElement("div", "already-week-nav");
+    const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
+    const endLabel = formatDateShort(dates[6].toISOString(), timezone, locale);
+    const prevBtn = createElement("button", "already-week-prev", {
+      "aria-label": "Previous week"
+    });
+    prevBtn.textContent = "\u2039";
+    prevBtn.addEventListener("click", () => {
+      const prev = new Date(currentDate);
+      prev.setDate(prev.getDate() - 7);
+      renderWeekView(container, events, timezone, prev, config);
+    });
+    nav.appendChild(prevBtn);
+    const title = createElement("span", "already-week-title");
+    title.textContent = `${startLabel} \u2013 ${endLabel}`;
+    nav.appendChild(title);
+    const nextBtn = createElement("button", "already-week-next", {
+      "aria-label": "Next week"
+    });
+    nextBtn.textContent = "\u203A";
+    nextBtn.addEventListener("click", () => {
+      const next = new Date(currentDate);
+      next.setDate(next.getDate() + 7);
+      renderWeekView(container, events, timezone, next, config);
+    });
+    nav.appendChild(nextBtn);
+    week.appendChild(nav);
+    const columns = createElement("div", "already-week-columns");
+    const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
+      weekday: "short"
+    });
+    for (const date of dates) {
+      const col = createElement(
+        "div",
+        `already-week-col${isToday(date) ? " already-week-col--today" : ""}`
+      );
+      const header = createElement("div", "already-week-col-header");
+      const dayName = dayFmt.format(date);
+      const dayNameEl = createElement("span", "already-week-dayname");
+      dayNameEl.textContent = dayName;
+      header.appendChild(dayNameEl);
+      const dayNumEl = createElement("span", "already-week-daynum");
+      dayNumEl.textContent = date.getDate();
+      header.appendChild(dayNumEl);
+      col.appendChild(header);
+      const dayEvents = sortFeatured(
+        events.filter((e) => {
+          const parts = getDatePartsInTz(e.start, timezone, locale);
+          return parts.year === date.getFullYear() && parts.month === date.getMonth() && parts.day === date.getDate();
+        })
+      );
+      for (const event of dayEvents) {
+        const block2 = createElement(
+          "div",
+          "already-week-event" + (event.featured ? " already-week-event--featured" : "")
+        );
+        block2.textContent = event.title;
+        bindEventClick(block2, event, "week", config);
+        col.appendChild(block2);
+      }
+      columns.appendChild(col);
     }
-    if (paginated.hasMoreFuture) {
-      const btn = document.createElement("button");
-      btn.className = "already-load-more";
-      btn.textContent = `${i18n.loadMore || "Load more"} (${paginated.remainingFuture} remaining)`;
-      btn.addEventListener("click", callbacks.onLoadMore);
-      bottomContainer.appendChild(btn);
-    }
+    week.appendChild(columns);
+    container.innerHTML = "";
+    container.appendChild(week);
   }
 
   // src/already-cal.js
@@ -4269,7 +4544,13 @@ ${text}</tr>
     pageSize: 10
   };
   var I18N_DEFAULTS = {
-    viewLabels: { month: "Month", week: "Week", day: "Day", grid: "Grid", list: "List" },
+    viewLabels: {
+      month: "Month",
+      week: "Week",
+      day: "Day",
+      grid: "Grid",
+      list: "List"
+    },
     noUpcomingEvents: "No upcoming events.",
     showPastEvents: "Show past events",
     hidePastEvents: "Hide past events",
@@ -4298,7 +4579,10 @@ ${text}</tr>
     const config = { ...DEFAULTS, ...userConfig };
     config.i18n = { ...I18N_DEFAULTS, ...config.i18n };
     if (config.i18n.viewLabels) {
-      config.i18n.viewLabels = { ...I18N_DEFAULTS.viewLabels, ...userConfig && userConfig.i18n && userConfig.i18n.viewLabels };
+      config.i18n.viewLabels = {
+        ...I18N_DEFAULTS.viewLabels,
+        ...userConfig?.i18n?.viewLabels
+      };
     }
     config.locale = config.locale || typeof navigator !== "undefined" && navigator.language || "en-US";
     config.pageSize = Number.isFinite(config.pageSize) && config.pageSize > 0 ? config.pageSize : DEFAULTS.pageSize;
@@ -4337,10 +4621,15 @@ ${text}</tr>
     el.appendChild(paginationBottomContainer);
     el.appendChild(toggleContainer);
     const stickyConfig = resolveSticky(config.sticky);
-    applyStickyClasses(stickyConfig, headerContainer, selectorContainer, tagFilterContainer);
+    applyStickyClasses(
+      stickyConfig,
+      headerContainer,
+      selectorContainer,
+      tagFilterContainer
+    );
     let data = null;
     let showPast = config.showPastEvents;
-    let currentDate = /* @__PURE__ */ new Date();
+    const currentDate = /* @__PURE__ */ new Date();
     let lastView = null;
     let lastViewState = null;
     let paginationState = { futureCount: 0, pastCount: 0 };
@@ -4399,18 +4688,31 @@ ${text}</tr>
     function makePaginationCallbacks(viewState) {
       return {
         onShowEarlier: () => {
-          paginationState = { ...paginationState, pastCount: paginationState.pastCount + config.pageSize };
+          paginationState = {
+            ...paginationState,
+            pastCount: paginationState.pastCount + config.pageSize
+          };
           renderView(viewState);
         },
         onLoadMore: () => {
-          const anchorEl = viewContainer.querySelector(".already-grid-card:last-child, .already-list-item:last-child");
+          const anchorEl = viewContainer.querySelector(
+            ".already-grid-card:last-child, .already-list-item:last-child"
+          );
           const anchorOffset = anchorEl ? anchorEl.getBoundingClientRect().top : null;
-          paginationState = { ...paginationState, futureCount: paginationState.futureCount + config.pageSize };
+          paginationState = {
+            ...paginationState,
+            futureCount: paginationState.futureCount + config.pageSize
+          };
           renderView(viewState);
           if (anchorEl && anchorOffset !== null) {
-            const newAnchor = viewContainer.querySelector(`[data-event-id="${CSS.escape(anchorEl.dataset.eventId)}"]`);
+            const newAnchor = viewContainer.querySelector(
+              `[data-event-id="${CSS.escape(anchorEl.dataset.eventId)}"]`
+            );
             if (newAnchor) {
-              window.scrollTo(0, window.scrollY + (newAnchor.getBoundingClientRect().top - anchorOffset));
+              window.scrollTo(
+                0,
+                window.scrollY + (newAnchor.getBoundingClientRect().top - anchorOffset)
+              );
             }
           }
         }
@@ -4438,10 +4740,21 @@ ${text}</tr>
         }
       }
       if (viewState.view !== "detail") {
-        renderViewSelector(selectorContainer, config.views, viewState.view, isMobile(), config);
+        renderViewSelector(
+          selectorContainer,
+          config.views,
+          viewState.view,
+          isMobile(),
+          config
+        );
         lastView = viewState.view;
       }
-      updateStickyOffsets(stickyConfig, headerContainer, selectorContainer, tagFilterContainer);
+      updateStickyOffsets(
+        stickyConfig,
+        headerContainer,
+        selectorContainer,
+        tagFilterContainer
+      );
       paginationTopContainer.innerHTML = "";
       paginationBottomContainer.innerHTML = "";
       switch (viewState.view) {
@@ -4457,15 +4770,37 @@ ${text}</tr>
           break;
         }
         case "grid": {
-          const paginated = paginateEvents(events, showPast, config.pageSize, paginationState);
+          const paginated = paginateEvents(
+            events,
+            showPast,
+            config.pageSize,
+            paginationState
+          );
           renderGridView(viewContainer, paginated.visible, timezone, config);
-          renderPaginationButtons(paginationTopContainer, paginationBottomContainer, paginated, config.i18n, makePaginationCallbacks(viewState));
+          renderPaginationButtons(
+            paginationTopContainer,
+            paginationBottomContainer,
+            paginated,
+            config.i18n,
+            makePaginationCallbacks(viewState)
+          );
           break;
         }
         case "list": {
-          const paginated = paginateEvents(events, showPast, config.pageSize, paginationState);
+          const paginated = paginateEvents(
+            events,
+            showPast,
+            config.pageSize,
+            paginationState
+          );
           renderListView(viewContainer, paginated.visible, timezone, config);
-          renderPaginationButtons(paginationTopContainer, paginationBottomContainer, paginated, config.i18n, makePaginationCallbacks(viewState));
+          renderPaginationButtons(
+            paginationTopContainer,
+            paginationBottomContainer,
+            paginated,
+            config.i18n,
+            makePaginationCallbacks(viewState)
+          );
           break;
         }
         case "detail": {
@@ -4477,29 +4812,50 @@ ${text}</tr>
             }
             setEventMeta(event);
             selectorContainer.innerHTML = "";
-            renderDetailView(viewContainer, event, timezone, () => {
-              setView(lastView || config.defaultView, config);
-            }, config);
+            renderDetailView(
+              viewContainer,
+              event,
+              timezone,
+              () => {
+                setView(lastView || config.defaultView, config);
+              },
+              config
+            );
           } else {
-            renderError(viewContainer, "Event not found.", () => renderView({ view: config.defaultView }), config);
+            renderError(
+              viewContainer,
+              "Event not found.",
+              () => renderView({ view: config.defaultView }),
+              config
+            );
           }
           return;
         }
       }
       if (hasPastEvents()) {
-        renderPastToggle(toggleContainer, showPast, () => {
-          showPast = !showPast;
-          paginationState = { futureCount: 0, pastCount: 0 };
-          renderView(viewState);
-        }, config);
+        renderPastToggle(
+          toggleContainer,
+          showPast,
+          () => {
+            showPast = !showPast;
+            paginationState = { futureCount: 0, pastCount: 0 };
+            renderView(viewState);
+          },
+          config
+        );
       } else {
         toggleContainer.innerHTML = "";
       }
       if (events.length === 0 && viewState.view !== "detail") {
-        renderEmpty(viewContainer, hasPastEvents(), () => {
-          showPast = true;
-          renderView(viewState);
-        }, config);
+        renderEmpty(
+          viewContainer,
+          hasPastEvents(),
+          () => {
+            showPast = true;
+            renderView(viewState);
+          },
+          config
+        );
       }
     }
     async function start() {
@@ -4530,7 +4886,12 @@ ${text}</tr>
     }
     start();
     window.addEventListener("resize", () => {
-      updateStickyOffsets(stickyConfig, headerContainer, selectorContainer, tagFilterContainer);
+      updateStickyOffsets(
+        stickyConfig,
+        headerContainer,
+        selectorContainer,
+        tagFilterContainer
+      );
     });
   }
   function autoInit() {
@@ -4542,18 +4903,26 @@ ${text}</tr>
         config.google = {};
         if (dataset.calendarId) config.google.calendarId = dataset.calendarId;
         if (dataset.apiKey) config.google.apiKey = dataset.apiKey;
-        if (dataset.maxResults) config.google.maxResults = parseInt(dataset.maxResults, 10);
+        if (dataset.maxResults)
+          config.google.maxResults = parseInt(dataset.maxResults, 10);
       }
       if (dataset.fetchUrl) config.fetchUrl = dataset.fetchUrl;
       if (dataset.defaultView) config.defaultView = dataset.defaultView;
       if (dataset.locale) config.locale = dataset.locale;
-      if (dataset.weekStartDay) config.weekStartDay = parseInt(dataset.weekStartDay, 10);
-      if (dataset.storageKeyPrefix) config.storageKeyPrefix = dataset.storageKeyPrefix;
-      if (dataset.mobileBreakpoint) config.mobileBreakpoint = parseInt(dataset.mobileBreakpoint, 10);
-      if (dataset.mobileDefaultView) config.mobileDefaultView = dataset.mobileDefaultView;
-      if (dataset.maxEventsPerDay) config.maxEventsPerDay = parseInt(dataset.maxEventsPerDay, 10);
-      if (dataset.locationLinkTemplate) config.locationLinkTemplate = dataset.locationLinkTemplate;
-      if (dataset.showPastEvents !== void 0) config.showPastEvents = dataset.showPastEvents === "true";
+      if (dataset.weekStartDay)
+        config.weekStartDay = parseInt(dataset.weekStartDay, 10);
+      if (dataset.storageKeyPrefix)
+        config.storageKeyPrefix = dataset.storageKeyPrefix;
+      if (dataset.mobileBreakpoint)
+        config.mobileBreakpoint = parseInt(dataset.mobileBreakpoint, 10);
+      if (dataset.mobileDefaultView)
+        config.mobileDefaultView = dataset.mobileDefaultView;
+      if (dataset.maxEventsPerDay)
+        config.maxEventsPerDay = parseInt(dataset.maxEventsPerDay, 10);
+      if (dataset.locationLinkTemplate)
+        config.locationLinkTemplate = dataset.locationLinkTemplate;
+      if (dataset.showPastEvents !== void 0)
+        config.showPastEvents = dataset.showPastEvents === "true";
       const theme = {};
       let hasTheme = false;
       for (const [key, value] of Object.entries(dataset)) {

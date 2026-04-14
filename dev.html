@@ -88,13 +88,13 @@
       i18n: {
         back: '\u2190 Go back',
       },
-      onViewChange: function(newView, oldView) {
+      onViewChange: (newView, oldView) => {
         console.log('View changed:', oldView, '->', newView);
       },
-      onEventClick: function(event, view) {
+      onEventClick: (event, view) => {
         console.log('Event clicked:', event.title, 'in', view);
       },
-      onDataLoad: function(data) {
+      onDataLoad: (data) => {
         console.log('Data loaded:', data.events.length, 'events');
       },
       data: demoData,
@@ -107,8 +107,8 @@
   <script>
     // Inject data for auto-init demo (auto-init uses data attribute for URL/Google,
     // but for demo we patch it after the fact)
-    (function() {
-      var el = document.getElementById('already-cal-auto');
+    (() => {
+      var _el = document.getElementById('already-cal-auto');
       // The auto-init already fired, but since it has no data source, we re-init with data
       Already.init({
         el: '#already-cal-auto',

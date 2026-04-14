@@ -1,9 +1,13 @@
-import { normalizeImageUrl, extractImageTokens } from './util/images.js';
-import { extractLinkTokens } from './util/links.js';
-import { detectFormat } from './util/description.js';
-import { deriveTypeFromMimeType, labelForType, extractAttachmentTokens } from './util/attachments.js';
-import { extractDirectives } from './util/directives.js';
-import { TokenSet } from './util/tokens.js';
+import {
+  deriveTypeFromMimeType,
+  extractAttachmentTokens,
+  labelForType,
+} from "./util/attachments.js";
+import { detectFormat } from "./util/description.js";
+import { extractDirectives } from "./util/directives.js";
+import { extractImageTokens, normalizeImageUrl } from "./util/images.js";
+import { extractLinkTokens } from "./util/links.js";
+import { TokenSet } from "./util/tokens.js";
 
 /** Load event data from the configured source (pre-loaded, fetch URL, or Google Calendar API). */
 export async function loadData(config) {
@@ -27,14 +31,18 @@ export async function loadData(config) {
   // Mode 3: Direct Google Calendar API
   else if (config.google) {
     data = await fetchGoogleCalendar(config.google, config);
-  }
-  else {
-    throw new Error('already-cal: No data source configured. Provide data, fetchUrl, or google config.');
+  } else {
+    throw new Error(
+      "already-cal: No data source configured. Provide data, fetchUrl, or google config.",
+    );
   }
 
   // Enrich events: extract images/links from descriptions for all data sources
   if (data.events) {
-    data = { ...data, events: data.events.map(event => enrichEvent(event, config)) };
+    data = {
+      ...data,
+      events: data.events.map((event) => enrichEvent(event, config)),
+    };
   }
 
   // Apply eventTransform
@@ -52,10 +60,10 @@ export async function loadData(config) {
 
 /** Enrich a raw event: extract directives, images, links, attachments, and tags from description. */
 export function enrichEvent(event, config) {
-  let description = event.description || '';
+  let description = event.description || "";
   let image = event.image || null;
-  let images = (event.images && event.images.length > 0) ? event.images : [];
-  let links = (event.links && event.links.length > 0) ? event.links : [];
+  let images = event.images && event.images.length > 0 ? event.images : [];
+  let links = event.links && event.links.length > 0 ? event.links : [];
   let featured = event.featured || false;
   let hidden = event.hidden || false;
 
@@ -78,18 +86,20 @@ export function enrichEvent(event, config) {
   }
 
   // Fallback: check attachments for images
-  const attachmentImages = getImagesFromAttachments(event._imageAttachments || event.attachments);
+  const attachmentImages = getImagesFromAttachments(
+    event._imageAttachments || event.attachments,
+  );
   if (attachmentImages.length > 0) {
-    const imgTokens = tokenSet.ofType('image');
-    const existing = new Set(imgTokens.map(t => t.url));
+    const imgTokens = tokenSet.ofType("image");
+    const existing = new Set(imgTokens.map((t) => t.url));
     for (const ai of attachmentImages) {
       if (!existing.has(ai)) {
         tokenSet.add({
           canonicalId: `image:attachment:${ai}`,
-          type: 'image',
-          source: 'url',
+          type: "image",
+          source: "url",
           url: ai,
-          label: '',
+          label: "",
           metadata: {},
         });
       }
@@ -104,7 +114,8 @@ export function enrichEvent(event, config) {
   }
 
   // Step 4: Extract file attachments from description
-  let attachments = (event.attachments && event.attachments.length > 0) ? event.attachments : [];
+  let attachments =
+    event.attachments && event.attachments.length > 0 ? event.attachments : [];
   if (description) {
     const result = extractAttachmentTokens(description, config);
     if (result.tokens.length > 0) {
@@ -114,46 +125,62 @@ export function enrichEvent(event, config) {
   }
 
   // Build output arrays from token set
-  const imageTokens = tokenSet.ofType('image');
+  const imageTokens = tokenSet.ofType("image");
   if (imageTokens.length > 0 && images.length === 0) {
-    images = imageTokens.map(t => t.url);
+    images = imageTokens.map((t) => t.url);
   }
   if (!image && images.length > 0) image = images[0];
 
-  const linkTokens = tokenSet.ofType('link');
+  const linkTokens = tokenSet.ofType("link");
   if (linkTokens.length > 0 && links.length === 0) {
-    links = linkTokens.map(t => ({ label: t.label, url: t.url || '' }));
+    links = linkTokens.map((t) => ({ label: t.label, url: t.url || "" }));
   }
 
-  const attachmentTokens = tokenSet.ofType('attachment');
+  const attachmentTokens = tokenSet.ofType("attachment");
   if (attachmentTokens.length > 0) {
-    const tokenAttachments = attachmentTokens.map(t => ({
+    const tokenAttachments = attachmentTokens.map((t) => ({
       label: t.label,
       url: t.url,
-      type: t.metadata.fileType || 'file',
+      type: t.metadata.fileType || "file",
     }));
     attachments = [...attachments, ...tokenAttachments];
   }
 
   // Build tags from tag tokens, merging with any existing tags
-  const tagTokens = tokenSet.ofType('tag');
+  const tagTokens = tokenSet.ofType("tag");
   const existingTags = event.tags || [];
   const tags = [
     ...existingTags,
-    ...tagTokens.map(t => ({ key: t.metadata.key, value: t.metadata.value })),
+    ...tagTokens.map((t) => ({ key: t.metadata.key, value: t.metadata.value })),
   ];
 
   // Detect format if not set
-  const descriptionFormat = event.descriptionFormat || detectFormat(description);
+  const descriptionFormat =
+    event.descriptionFormat || detectFormat(description);
 
   const { _imageAttachments, ...rest } = event;
-  return { ...rest, description, descriptionFormat, image, images, links, attachments, tags, featured, hidden };
+  return {
+    ...rest,
+    description,
+    descriptionFormat,
+    image,
+    images,
+    links,
+    attachments,
+    tags,
+    featured,
+    hidden,
+  };
 }
 
-async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {
+async function fetchGoogleCalendar(
+  { apiKey, calendarId, maxResults = 50 },
+  config,
+) {
   const now = new Date().toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
-    + `?key=${apiKey}&timeMin=${now}&singleEvents=true&orderBy=startTime&maxResults=${maxResults}`;
+  const url =
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events` +
+    `?key=${apiKey}&timeMin=${now}&singleEvents=true&orderBy=startTime&maxResults=${maxResults}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Google Calendar API error: ${res.status}`);
@@ -164,21 +191,21 @@ async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, conf
 function getImagesFromAttachments(attachments) {
   if (!attachments) return [];
   return attachments
-    .filter(a => a.mimeType && a.mimeType.startsWith('image/'))
-    .map(a => normalizeImageUrl(a.fileUrl || a.url))
+    .filter((a) => a.mimeType?.startsWith("image/"))
+    .map((a) => normalizeImageUrl(a.fileUrl || a.url))
     .filter(Boolean);
 }
 
 /** Transform raw Google Calendar API response into already-cal data format. */
 export function transformGoogleEvents(googleData, config) {
-  const events = (googleData.items || []).map(item => {
+  const events = (googleData.items || []).map((item) => {
     // Separate image attachments from file attachments.
     // Image attachments keep mimeType so getImagesFromAttachments can process them.
     // File attachments get normalized to {label, url, type} schema.
     const apiAttachments = [];
     const imageAttachments = [];
-    for (const a of (item.attachments || [])) {
-      if (a.mimeType && a.mimeType.startsWith('image/')) {
+    for (const a of item.attachments || []) {
+      if (a.mimeType?.startsWith("image/")) {
         imageAttachments.push({ mimeType: a.mimeType, url: a.fileUrl });
       } else {
         const type = deriveTypeFromMimeType(a.mimeType);
@@ -192,28 +219,31 @@ export function transformGoogleEvents(googleData, config) {
 
     // Build base event shape — enrichEvent handles description extraction.
     // _imageAttachments is internal, stripped by enrichEvent before returning.
-    return enrichEvent({
-      id: item.id,
-      title: item.summary || 'Untitled Event',
-      description: item.description || '',
-      location: item.location || '',
-      start: item.start?.dateTime || item.start?.date || '',
-      end: item.end?.dateTime || item.end?.date || '',
-      allDay: !item.start?.dateTime,
-      image: null,
-      images: [],
-      links: [],
-      attachments: apiAttachments,
-      _imageAttachments: imageAttachments,
-    }, config);
+    return enrichEvent(
+      {
+        id: item.id,
+        title: item.summary || "Untitled Event",
+        description: item.description || "",
+        location: item.location || "",
+        start: item.start?.dateTime || item.start?.date || "",
+        end: item.end?.dateTime || item.end?.date || "",
+        allDay: !item.start?.dateTime,
+        image: null,
+        images: [],
+        links: [],
+        attachments: apiAttachments,
+        _imageAttachments: imageAttachments,
+      },
+      config,
+    );
   });
 
   return {
     events,
     calendar: {
-      name: googleData.summary || '',
-      description: googleData.description || '',
-      timezone: googleData.timeZone || 'UTC',
+      name: googleData.summary || "",
+      description: googleData.description || "",
+      timezone: googleData.timeZone || "UTC",
     },
     generated: new Date().toISOString(),
   };

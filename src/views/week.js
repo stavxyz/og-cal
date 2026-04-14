@@ -1,8 +1,24 @@
-import { getWeekDates, formatDateShort, isToday, getDatePartsInTz } from '../util/dates.js';
-import { createElement, bindEventClick, filterHidden, sortFeatured } from './helpers.js';
+import {
+  formatDateShort,
+  getDatePartsInTz,
+  getWeekDates,
+  isToday,
+} from "../util/dates.js";
+import {
+  bindEventClick,
+  createElement,
+  filterHidden,
+  sortFeatured,
+} from "./helpers.js";
 
 /** Render the 7-column week view. */
-export function renderWeekView(container, events, timezone, currentDate, config) {
+export function renderWeekView(
+  container,
+  events,
+  timezone,
+  currentDate,
+  config,
+) {
   config = config || {};
   const locale = config.locale;
   const weekStartDay = config.weekStartDay || 0;
@@ -10,29 +26,33 @@ export function renderWeekView(container, events, timezone, currentDate, config)
 
   events = filterHidden(events);
 
-  const week = createElement('div', 'already-week');
+  const week = createElement("div", "already-week");
 
   // Navigation
-  const nav = createElement('div', 'already-week-nav');
+  const nav = createElement("div", "already-week-nav");
   const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
   const endLabel = formatDateShort(dates[6].toISOString(), timezone, locale);
 
-  const prevBtn = createElement('button', 'already-week-prev', { 'aria-label': 'Previous week' });
-  prevBtn.textContent = '\u2039';
-  prevBtn.addEventListener('click', () => {
+  const prevBtn = createElement("button", "already-week-prev", {
+    "aria-label": "Previous week",
+  });
+  prevBtn.textContent = "\u2039";
+  prevBtn.addEventListener("click", () => {
     const prev = new Date(currentDate);
     prev.setDate(prev.getDate() - 7);
     renderWeekView(container, events, timezone, prev, config);
   });
   nav.appendChild(prevBtn);
 
-  const title = createElement('span', 'already-week-title');
+  const title = createElement("span", "already-week-title");
   title.textContent = `${startLabel} \u2013 ${endLabel}`;
   nav.appendChild(title);
 
-  const nextBtn = createElement('button', 'already-week-next', { 'aria-label': 'Next week' });
-  nextBtn.textContent = '\u203a';
-  nextBtn.addEventListener('click', () => {
+  const nextBtn = createElement("button", "already-week-next", {
+    "aria-label": "Next week",
+  });
+  nextBtn.textContent = "\u203a";
+  nextBtn.addEventListener("click", () => {
     const next = new Date(currentDate);
     next.setDate(next.getDate() + 7);
     renderWeekView(container, events, timezone, next, config);
@@ -41,31 +61,46 @@ export function renderWeekView(container, events, timezone, currentDate, config)
 
   week.appendChild(nav);
 
-  const columns = createElement('div', 'already-week-columns');
-  const dayFmt = new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' });
+  const columns = createElement("div", "already-week-columns");
+  const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
+    weekday: "short",
+  });
 
   for (const date of dates) {
-    const col = createElement('div', 'already-week-col' + (isToday(date) ? ' already-week-col--today' : ''));
+    const col = createElement(
+      "div",
+      `already-week-col${isToday(date) ? " already-week-col--today" : ""}`,
+    );
 
-    const header = createElement('div', 'already-week-col-header');
+    const header = createElement("div", "already-week-col-header");
     const dayName = dayFmt.format(date);
-    const dayNameEl = createElement('span', 'already-week-dayname');
+    const dayNameEl = createElement("span", "already-week-dayname");
     dayNameEl.textContent = dayName;
     header.appendChild(dayNameEl);
-    const dayNumEl = createElement('span', 'already-week-daynum');
+    const dayNumEl = createElement("span", "already-week-daynum");
     dayNumEl.textContent = date.getDate();
     header.appendChild(dayNumEl);
     col.appendChild(header);
 
-    const dayEvents = sortFeatured(events.filter(e => {
-      const parts = getDatePartsInTz(e.start, timezone, locale);
-      return parts.year === date.getFullYear() && parts.month === date.getMonth() && parts.day === date.getDate();
-    }));
+    const dayEvents = sortFeatured(
+      events.filter((e) => {
+        const parts = getDatePartsInTz(e.start, timezone, locale);
+        return (
+          parts.year === date.getFullYear() &&
+          parts.month === date.getMonth() &&
+          parts.day === date.getDate()
+        );
+      }),
+    );
 
     for (const event of dayEvents) {
-      const block = createElement('div', 'already-week-event' + (event.featured ? ' already-week-event--featured' : ''));
+      const block = createElement(
+        "div",
+        "already-week-event" +
+          (event.featured ? " already-week-event--featured" : ""),
+      );
       block.textContent = event.title;
-      bindEventClick(block, event, 'week', config);
+      bindEventClick(block, event, "week", config);
       col.appendChild(block);
     }
 
@@ -73,6 +108,6 @@ export function renderWeekView(container, events, timezone, currentDate, config)
   }
 
   week.appendChild(columns);
-  container.innerHTML = '';
+  container.innerHTML = "";
   container.appendChild(week);
 }
