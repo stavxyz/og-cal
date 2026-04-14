@@ -1,6 +1,7 @@
 import { getDaysInMonth, getFirstDayOfMonth, getMonthName, isToday, getDatePartsInTz, getDayNames } from '../util/dates.js';
 import { createElement, bindEventClick, filterHidden, sortFeatured } from './helpers.js';
 
+/** Render the month calendar grid view. */
 export function renderMonthView(container, events, timezone, currentDate, config) {
   config = config || {};
   const locale = config.locale;

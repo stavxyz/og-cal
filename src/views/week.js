@@ -1,6 +1,7 @@
 import { getWeekDates, formatDateShort, isToday, getDatePartsInTz } from '../util/dates.js';
 import { createElement, bindEventClick, filterHidden, sortFeatured } from './helpers.js';
 
+/** Render the 7-column week view. */
 export function renderWeekView(container, events, timezone, currentDate, config) {
   config = config || {};
   const locale = config.locale;

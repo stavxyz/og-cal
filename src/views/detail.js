@@ -70,6 +70,7 @@ function renderGallery(images, altText) {
   return gallery;
 }
 
+/** Render the two-column event detail view with gallery, metadata, and action buttons. */
 export function renderDetailView(container, event, timezone, onBack, config) {
   config = config || {};
   const locale = config.locale;

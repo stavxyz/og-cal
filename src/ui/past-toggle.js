@@ -1,3 +1,4 @@
+/** Render the show/hide past events toggle button. */
 export function renderPastToggle(container, showingPast, onToggle, config) {
   const i18n = (config && config.i18n) || {};
   const showLabel = i18n.showPastEvents || 'Show past events';

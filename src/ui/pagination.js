@@ -1,6 +1,7 @@
 // src/ui/pagination.js
 import { isPast } from '../util/dates.js';
 
+/** Slice events into a paginated window, splitting past and future when showPast is true. */
 export function paginateEvents(events, showPast, pageSize, paginationState) {
   if (!events || events.length === 0) {
     return { visible: [], hasMoreFuture: false, hasMorePast: false, remainingFuture: 0, remainingPast: 0 };

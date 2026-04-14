@@ -5,6 +5,7 @@ import { deriveTypeFromMimeType, labelForType, extractAttachmentTokens } from '.
 import { extractDirectives } from './util/directives.js';
 import { TokenSet } from './util/tokens.js';
 
+/** Load event data from the configured source (pre-loaded, fetch URL, or Google Calendar API). */
 export async function loadData(config) {
   let data;
 
@@ -49,6 +50,7 @@ export async function loadData(config) {
   return data;
 }
 
+/** Enrich a raw event: extract directives, images, links, attachments, and tags from description. */
 export function enrichEvent(event, config) {
   let description = event.description || '';
   let image = event.image || null;
@@ -167,6 +169,7 @@ function getImagesFromAttachments(attachments) {
     .filter(Boolean);
 }
 
+/** Transform raw Google Calendar API response into already-cal data format. */
 export function transformGoogleEvents(googleData, config) {
   const events = (googleData.items || []).map(item => {
     // Separate image attachments from file attachments.

@@ -3,6 +3,7 @@
 const ALL_ON = { header: true, viewSelector: true, tagFilter: true };
 const ALL_OFF = { header: false, viewSelector: false, tagFilter: false };
 
+/** Resolve a sticky config value (boolean or object) into a normalized { header, viewSelector, tagFilter } object. */
 export function resolveSticky(value) {
   if (value === false) return { ...ALL_OFF };
   if (value === true || value === undefined || value === null || typeof value !== 'object') {
@@ -15,6 +16,7 @@ export function resolveSticky(value) {
   };
 }
 
+/** Apply or remove the already-sticky CSS class on header, selector, and tag filter containers. */
 export function applyStickyClasses(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
   const containers = [
     [stickyConfig.header, headerContainer],
@@ -26,6 +28,7 @@ export function applyStickyClasses(stickyConfig, headerContainer, selectorContai
   }
 }
 
+/** Recalculate top offsets for sticky-positioned elements so they stack correctly. */
 export function updateStickyOffsets(stickyConfig, headerContainer, selectorContainer, tagFilterContainer) {
   let offset = 0;
 
