@@ -119,15 +119,15 @@ Already.init({
   sticky: true,                        // true | false | { header, viewSelector, tagFilter }
 
   // --- Theming ---
+  theme: 'hero',                         // shorthand: layout name with defaults
+  // or full control:
   theme: {
-    primary: '#8B4513',
-    primaryText: '#ffffff',
-    background: '#f5f0eb',
-    surface: '#ffffff',
-    text: '#1a1a1a',
-    textSecondary: '#666',
-    radius: '8px',
-    fontFamily: 'system-ui, sans-serif',
+    layout: 'clean',                     // clean | hero | badge | compact
+    palette: 'light',                    // light | dark | warm | cool
+    orientation: 'vertical',             // vertical | horizontal (ignored for compact)
+    imagePosition: 'left',               // left | right | alternating (horizontal only)
+    primary: '#8B4513',                  // CSS custom property overrides
+    radius: '12px',
   },
 
   // --- Locale ---
@@ -224,6 +224,58 @@ The most common options are also available as HTML `data-` attributes for zero-J
 | `data-location-link-template` | `locationLinkTemplate` |
 | `data-storage-key-prefix` | `storageKeyPrefix` |
 | `data-theme-*` | `theme.*` (e.g. `data-theme-primary="#333"`) |
+
+## Themes
+
+Themes have two independent axes: **layouts** (card structure) and **palettes** (visual style). Mix any layout with any palette.
+
+### Layouts
+
+| Layout | Description |
+|--------|-------------|
+| `clean` | Image, title, date, location. Minimal and fast to scan. **(default)** |
+| `hero` | Large image, bold uppercase title, description preview, footer with icons |
+| `badge` | Date badge overlay on image, tags, description, RSVP action footer |
+| `compact` | No image, inline date badge, dense info. Great for text-heavy calendars |
+
+### Palettes
+
+| Palette | Vibe |
+|---------|------|
+| `light` | Clean default — system-ui, subtle shadows **(default)** |
+| `dark` | Dark mode — dark backgrounds, no shadows |
+| `warm` | Earthy/organic — Georgia serif, generous radius, warm shadows |
+| `cool` | Modern/minimal — Inter font, tight radius, crisp shadows |
+
+### Usage
+
+```js
+// Shorthand — just pick a layout (defaults to light palette)
+Already.init({ el: '#cal', theme: 'hero' });
+
+// Full control
+Already.init({
+  el: '#cal',
+  theme: {
+    layout: 'badge',
+    palette: 'dark',
+    orientation: 'horizontal',  // vertical (default) | horizontal
+    imagePosition: 'alternating', // left (default) | right | alternating
+
+    // CSS custom property overrides (applied on top of palette)
+    primary: '#e63946',
+    radius: '0px',
+  },
+});
+```
+
+Grid view uses the theme's orientation (default: vertical). List view always renders horizontal cards (vertical for compact). The `imagePosition` option only applies in horizontal orientation.
+
+### CSS Custom Properties
+
+Palettes set these properties. Override any of them in the theme config:
+
+`primary`, `primaryText`, `background`, `surface`, `text`, `textSecondary`, `border`, `fontFamily`, `fontWeightNormal`, `fontWeightBold`, `fontSizeSm`, `fontSizeBase`, `fontSizeLg`, `radius`, `radiusSm`, `shadow`, `spacing`
 
 ## Link Extraction
 
