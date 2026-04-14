@@ -2,7 +2,7 @@
 
 /* ===== Custom Properties ===== */
 :root {
-  --already-primary: #8B4513;
+  --already-primary: #8b4513;
   --already-primary-text: #ffffff;
   --already-background: #f5f0eb;
   --already-surface: #ffffff;
@@ -168,7 +168,9 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .already-view-tab svg {
@@ -211,7 +213,9 @@
   background: var(--already-surface);
   border-radius: var(--already-radius);
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.1s;
+  transition:
+    box-shadow 0.15s,
+    transform 0.1s;
 }
 
 .already-list-item:hover {
@@ -275,7 +279,9 @@
   border-radius: var(--already-radius);
   overflow: hidden;
   cursor: pointer;
-  transition: box-shadow 0.15s, transform 0.1s;
+  transition:
+    box-shadow 0.15s,
+    transform 0.1s;
 }
 
 .already-grid-card:hover {
@@ -306,7 +312,11 @@
 }
 
 .already-grid-image--placeholder {
-  background: linear-gradient(135deg, var(--already-background) 0%, rgba(0, 0, 0, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--already-background) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
 }
 
 .already-grid-body {
@@ -1054,7 +1064,8 @@
 }
 
 @keyframes already-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.4;
   }
   50% {
@@ -1144,7 +1155,9 @@
   border-radius: var(--already-radius);
   cursor: pointer;
   font-family: var(--already-font-family);
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .already-past-toggle:hover {
@@ -1186,7 +1199,9 @@
   border-radius: var(--already-radius);
   cursor: pointer;
   font-family: var(--already-font-family);
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .already-load-more:hover,
@@ -1264,7 +1279,9 @@
     display: none;
   }
 
-  .already-month-cell:not(.already-month-cell--has-events):not(.already-month-cell--empty) {
+  .already-month-cell:not(.already-month-cell--has-events):not(
+      .already-month-cell--empty
+    ) {
     display: none;
   }
 
@@ -1412,7 +1429,7 @@
 .already-day-event--featured .already-day-event-title::before,
 .already-month-chip--featured::before,
 .already-week-event--featured::before {
-  content: '\2605';
+  content: "\2605";
   font-size: 0.75em;
   color: var(--already-primary);
   margin-right: 0.25em;
@@ -1435,7 +1452,10 @@
   cursor: pointer;
   font-size: 0.85rem;
   font-family: var(--already-font-family);
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .already-tag-pill:hover {

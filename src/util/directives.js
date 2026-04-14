@@ -1,5 +1,5 @@
-import { cleanupHtml, stripUrl } from './sanitize.js';
-import { normalizeImageUrl, imageCanonicalId } from './images.js';
+import { imageCanonicalId, normalizeImageUrl } from "./images.js";
+import { cleanupHtml, stripUrl } from "./sanitize.js";
 
 // Directive regex: #already: followed by non-whitespace, non-HTML chars.
 // Excludes < and > so the match stops before any wrapping </a> tag.
@@ -9,32 +9,120 @@ const DIRECTIVE_PATTERN = /#already:([^\s<>]+)/gi;
 // The url function constructs a real link from the directive value so that
 // directive-sourced tokens can be rendered as clickable buttons.
 const DIRECTIVE_PLATFORMS = {
-  instagram:     { label: (v) => `Follow @${v} on Instagram`, canonicalPrefix: 'instagram', url: (v) => `https://instagram.com/${v}` },
-  facebook:      { label: (v) => `${v} on Facebook`, canonicalPrefix: 'facebook', url: (v) => `https://facebook.com/${v}` },
-  x:             { label: (v) => `Follow @${v} on X`, canonicalPrefix: 'x', url: (v) => `https://x.com/${v}` },
-  twitter:       { label: (v) => `Follow @${v} on X`, canonicalPrefix: 'x', url: (v) => `https://x.com/${v}` },
-  reddit:        { label: (v) => `r/${v} on Reddit`, canonicalPrefix: 'reddit', url: (v) => `https://reddit.com/r/${v}` },
-  youtube:       { label: () => 'Watch on YouTube', canonicalPrefix: 'youtube', url: (v) => `https://youtube.com/${v}` },
-  tiktok:        { label: (v) => `@${v} on TikTok`, canonicalPrefix: 'tiktok', url: (v) => `https://tiktok.com/@${v}` },
-  linkedin:      { label: () => 'View on LinkedIn', canonicalPrefix: 'linkedin', url: (v) => `https://linkedin.com/in/${v}` },
-  discord:       { label: () => 'Join Discord', canonicalPrefix: 'discord', url: (v) => `https://discord.gg/${v}` },
-  zoom:          { label: () => 'Join Zoom', canonicalPrefix: 'zoom', url: (v) => `https://zoom.us/j/${v}` },
-  googlemeet:    { label: () => 'Join Google Meet', canonicalPrefix: 'googlemeet', url: (v) => `https://meet.google.com/${v}` },
-  meet:          { label: () => 'Join Google Meet', canonicalPrefix: 'googlemeet', url: (v) => `https://meet.google.com/${v}` },
-  eventbrite:    { label: () => 'RSVP on Eventbrite', canonicalPrefix: 'eventbrite', url: (v) => `https://eventbrite.com/e/${v}` },
-  luma:          { label: () => 'RSVP on Luma', canonicalPrefix: 'luma', url: (v) => `https://lu.ma/${v}` },
-  mobilize:      { label: () => 'RSVP on Mobilize', canonicalPrefix: 'mobilize', url: (v) => `https://mobilize.us/${v}` },
-  actionnetwork: { label: () => 'Take Action', canonicalPrefix: 'actionnetwork', url: (v) => `https://actionnetwork.org/${v}` },
-  gofundme:      { label: () => 'Donate on GoFundMe', canonicalPrefix: 'gofundme', url: (v) => `https://gofundme.com/f/${v}` },
-  partiful:      { label: () => 'RSVP on Partiful', canonicalPrefix: 'partiful', url: (v) => `https://partiful.com/e/${v}` },
-  googleforms:   { label: () => 'Fill Out Form', canonicalPrefix: 'googleforms', url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform` },
-  forms:         { label: () => 'Fill Out Form', canonicalPrefix: 'googleforms', url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform` },
-  googlemaps:    { label: () => 'View on Map', canonicalPrefix: 'googlemaps', url: (v) => `https://maps.google.com/?q=${v}` },
-  maps:          { label: () => 'View on Map', canonicalPrefix: 'googlemaps', url: (v) => `https://maps.google.com/?q=${v}` },
+  instagram: {
+    label: (v) => `Follow @${v} on Instagram`,
+    canonicalPrefix: "instagram",
+    url: (v) => `https://instagram.com/${v}`,
+  },
+  facebook: {
+    label: (v) => `${v} on Facebook`,
+    canonicalPrefix: "facebook",
+    url: (v) => `https://facebook.com/${v}`,
+  },
+  x: {
+    label: (v) => `Follow @${v} on X`,
+    canonicalPrefix: "x",
+    url: (v) => `https://x.com/${v}`,
+  },
+  twitter: {
+    label: (v) => `Follow @${v} on X`,
+    canonicalPrefix: "x",
+    url: (v) => `https://x.com/${v}`,
+  },
+  reddit: {
+    label: (v) => `r/${v} on Reddit`,
+    canonicalPrefix: "reddit",
+    url: (v) => `https://reddit.com/r/${v}`,
+  },
+  youtube: {
+    label: () => "Watch on YouTube",
+    canonicalPrefix: "youtube",
+    url: (v) => `https://youtube.com/${v}`,
+  },
+  tiktok: {
+    label: (v) => `@${v} on TikTok`,
+    canonicalPrefix: "tiktok",
+    url: (v) => `https://tiktok.com/@${v}`,
+  },
+  linkedin: {
+    label: () => "View on LinkedIn",
+    canonicalPrefix: "linkedin",
+    url: (v) => `https://linkedin.com/in/${v}`,
+  },
+  discord: {
+    label: () => "Join Discord",
+    canonicalPrefix: "discord",
+    url: (v) => `https://discord.gg/${v}`,
+  },
+  zoom: {
+    label: () => "Join Zoom",
+    canonicalPrefix: "zoom",
+    url: (v) => `https://zoom.us/j/${v}`,
+  },
+  googlemeet: {
+    label: () => "Join Google Meet",
+    canonicalPrefix: "googlemeet",
+    url: (v) => `https://meet.google.com/${v}`,
+  },
+  meet: {
+    label: () => "Join Google Meet",
+    canonicalPrefix: "googlemeet",
+    url: (v) => `https://meet.google.com/${v}`,
+  },
+  eventbrite: {
+    label: () => "RSVP on Eventbrite",
+    canonicalPrefix: "eventbrite",
+    url: (v) => `https://eventbrite.com/e/${v}`,
+  },
+  luma: {
+    label: () => "RSVP on Luma",
+    canonicalPrefix: "luma",
+    url: (v) => `https://lu.ma/${v}`,
+  },
+  mobilize: {
+    label: () => "RSVP on Mobilize",
+    canonicalPrefix: "mobilize",
+    url: (v) => `https://mobilize.us/${v}`,
+  },
+  actionnetwork: {
+    label: () => "Take Action",
+    canonicalPrefix: "actionnetwork",
+    url: (v) => `https://actionnetwork.org/${v}`,
+  },
+  gofundme: {
+    label: () => "Donate on GoFundMe",
+    canonicalPrefix: "gofundme",
+    url: (v) => `https://gofundme.com/f/${v}`,
+  },
+  partiful: {
+    label: () => "RSVP on Partiful",
+    canonicalPrefix: "partiful",
+    url: (v) => `https://partiful.com/e/${v}`,
+  },
+  googleforms: {
+    label: () => "Fill Out Form",
+    canonicalPrefix: "googleforms",
+    url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform`,
+  },
+  forms: {
+    label: () => "Fill Out Form",
+    canonicalPrefix: "googleforms",
+    url: (v) => `https://docs.google.com/forms/d/e/${v}/viewform`,
+  },
+  googlemaps: {
+    label: () => "View on Map",
+    canonicalPrefix: "googlemaps",
+    url: (v) => `https://maps.google.com/?q=${v}`,
+  },
+  maps: {
+    label: () => "View on Map",
+    canonicalPrefix: "googlemaps",
+    url: (v) => `https://maps.google.com/?q=${v}`,
+  },
 };
 
 function parseDirective(body) {
-  const colonIdx = body.indexOf(':');
+  const colonIdx = body.indexOf(":");
   if (colonIdx === -1) return null;
 
   const type = body.slice(0, colonIdx).toLowerCase();
@@ -46,8 +134,8 @@ function parseDirective(body) {
   if (platform) {
     return {
       canonicalId: `${platform.canonicalPrefix}:${value}`,
-      type: 'link',
-      source: 'directive',
+      type: "link",
+      source: "directive",
       url: platform.url(value),
       label: platform.label(value),
       metadata: {},
@@ -55,50 +143,50 @@ function parseDirective(body) {
   }
 
   // 2. Image?
-  if (type === 'image') {
+  if (type === "image") {
     // Handle drive:ID shorthand → lh3.googleusercontent.com direct URL
     const driveMatch = value.match(/^drive:(.+)$/);
     if (driveMatch) {
       const driveId = driveMatch[1];
       return {
         canonicalId: `image:drive:${driveId}`,
-        type: 'image',
-        source: 'directive',
+        type: "image",
+        source: "directive",
         url: `https://lh3.googleusercontent.com/d/${driveId}`,
-        label: '',
+        label: "",
         metadata: {},
       };
     }
-    const isUrl = value.startsWith('http://') || value.startsWith('https://');
+    const isUrl = value.startsWith("http://") || value.startsWith("https://");
     const url = isUrl ? normalizeImageUrl(value) : null;
     return {
       canonicalId: isUrl ? imageCanonicalId(value) : `image:${value}`,
-      type: 'image',
-      source: 'directive',
+      type: "image",
+      source: "directive",
       url: url || value,
-      label: '',
+      label: "",
       metadata: {},
     };
   }
 
   // 3. Scalar tag?
-  if (type === 'tag') {
+  if (type === "tag") {
     return {
       canonicalId: `tag:${value}`,
-      type: 'tag',
-      source: 'directive',
+      type: "tag",
+      source: "directive",
       url: null,
       label: value,
-      metadata: { key: 'tag', value },
+      metadata: { key: "tag", value },
     };
   }
 
   // 4. Key-value tag
   return {
     canonicalId: `tag:${type}:${value}`,
-    type: 'tag',
-    source: 'directive',
-    url: value.startsWith('http') ? value : null,
+    type: "tag",
+    source: "directive",
+    url: value.startsWith("http") ? value : null,
     label: `${type}: ${value}`,
     metadata: { key: type, value },
   };
@@ -106,8 +194,9 @@ function parseDirective(body) {
 
 /** Extract #already: directives from description text, returning tokens and cleaned description. */
 export function extractDirectives(description) {
-  if (!description) return { tokens: [], description, featured: false, hidden: false };
-  description = description.replace(/&amp;/g, '&');
+  if (!description)
+    return { tokens: [], description, featured: false, hidden: false };
+  description = description.replace(/&amp;/g, "&");
 
   const tokens = [];
   const seen = new Set();
@@ -125,11 +214,11 @@ export function extractDirectives(description) {
 
     // Intercept featured/hidden flags before parseDirective (they have no colon in body)
     const bodyLower = body.toLowerCase();
-    if (bodyLower === 'featured') {
+    if (bodyLower === "featured") {
       featured = true;
       continue;
     }
-    if (bodyLower === 'hidden') {
+    if (bodyLower === "hidden") {
       hidden = true;
       continue;
     }

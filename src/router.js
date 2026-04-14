@@ -1,7 +1,7 @@
-const VALID_VIEWS = ['month', 'week', 'day', 'grid', 'list'];
+const VALID_VIEWS = ["month", "week", "day", "grid", "list"];
 
 function storageKey(config) {
-  const prefix = (config && config.storageKeyPrefix) || 'already';
+  const prefix = config?.storageKeyPrefix || "already";
   return `${prefix}-view`;
 }
 
@@ -10,20 +10,20 @@ export function parseHash() {
   // Check path for /event/{id} (allows server-side routing)
   const pathMatch = window.location.pathname.match(/\/event\/([^/]+)\/?$/);
   if (pathMatch) {
-    return { view: 'detail', eventId: decodeURIComponent(pathMatch[1]) };
+    return { view: "detail", eventId: decodeURIComponent(pathMatch[1]) };
   }
 
   const hash = window.location.hash.slice(1); // remove #
   if (!hash) return null;
 
   // #event/abc123
-  if (hash.startsWith('event/')) {
-    return { view: 'detail', eventId: hash.slice(6) };
+  if (hash.startsWith("event/")) {
+    return { view: "detail", eventId: hash.slice(6) };
   }
 
   // #day/2026-04-04
-  if (hash.startsWith('day/')) {
-    return { view: 'day', date: hash.slice(4) };
+  if (hash.startsWith("day/")) {
+    return { view: "day", date: hash.slice(4) };
   }
 
   // #month, #week, #grid, #list, #day
@@ -37,8 +37,8 @@ export function parseHash() {
 /** Determine the initial view from config, URL, or localStorage. */
 export function getInitialView(defaultView, enabledViews, config) {
   // Priority: initialEvent > hash/path > localStorage > config default
-  if (config && config.initialEvent) {
-    return { view: 'detail', eventId: config.initialEvent };
+  if (config?.initialEvent) {
+    return { view: "detail", eventId: config.initialEvent };
   }
 
   const fromHash = parseHash();
@@ -50,7 +50,7 @@ export function getInitialView(defaultView, enabledViews, config) {
     return { view: saved };
   }
 
-  return { view: defaultView || 'month' };
+  return { view: defaultView || "month" };
 }
 
 /** Navigate to a view by setting the URL hash and saving to localStorage. */
@@ -67,7 +67,7 @@ export function setEventDetail(eventId) {
 
 /** Register a callback for hash change events. */
 export function onHashChange(callback) {
-  window.addEventListener('hashchange', () => {
+  window.addEventListener("hashchange", () => {
     const parsed = parseHash();
     if (parsed) callback(parsed);
   });

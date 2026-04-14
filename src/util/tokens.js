@@ -1,18 +1,18 @@
 const TRACKING_PARAMS = new Set([
-  'fbclid',  // Facebook click ID
-  'si',      // Spotify session ID (share tracking)
+  "fbclid", // Facebook click ID
+  "si", // Spotify session ID (share tracking)
 ]);
-const TRACKING_PREFIX = 'utm_';
+const TRACKING_PREFIX = "utm_";
 
 /** Normalize a URL: force HTTPS, strip www prefix, remove tracking parameters. */
 export function normalizeUrl(url) {
   try {
     const u = new URL(url);
-    u.protocol = 'https:';
-    u.hostname = u.hostname.replace(/^www\./, '');
+    u.protocol = "https:";
+    u.hostname = u.hostname.replace(/^www\./, "");
 
     // Strip trailing slashes; treat bare root as empty path in output
-    const pathname = u.pathname.replace(/\/+$/, '');
+    const pathname = u.pathname.replace(/\/+$/, "");
 
     const cleaned = new URLSearchParams();
     for (const [key, value] of u.searchParams) {
@@ -21,7 +21,7 @@ export function normalizeUrl(url) {
       cleaned.append(key, value);
     }
     const search = cleaned.toString();
-    return u.origin + pathname + (search ? '?' + search : '') + u.hash;
+    return u.origin + pathname + (search ? `?${search}` : "") + u.hash;
   } catch {
     return url;
   }
@@ -50,10 +50,12 @@ export class TokenSet {
   }
 
   addAll(tokens) {
-    tokens.forEach(t => this.add(t));
+    for (const t of tokens) {
+      this.add(t);
+    }
   }
 
   ofType(type) {
-    return [...this._map.values()].filter(t => t.type === type);
+    return [...this._map.values()].filter((t) => t.type === type);
   }
 }

@@ -1,10 +1,16 @@
 // src/ui/pagination.js
-import { isPast } from '../util/dates.js';
+import { isPast } from "../util/dates.js";
 
 /** Slice events into a paginated window, splitting past and future when showPast is true. */
 export function paginateEvents(events, showPast, pageSize, paginationState) {
   if (!events || events.length === 0) {
-    return { visible: [], hasMoreFuture: false, hasMorePast: false, remainingFuture: 0, remainingPast: 0 };
+    return {
+      visible: [],
+      hasMoreFuture: false,
+      hasMorePast: false,
+      remainingFuture: 0,
+      remainingPast: 0,
+    };
   }
 
   if (!showPast) {
@@ -59,23 +65,29 @@ export function paginateEvents(events, showPast, pageSize, paginationState) {
  * Renders "Show earlier" and "Load more" buttons into the given containers.
  * Click behavior is provided via callbacks so this stays decoupled from app state.
  */
-export function renderPaginationButtons(topContainer, bottomContainer, paginated, i18n, callbacks) {
-  topContainer.innerHTML = '';
-  bottomContainer.innerHTML = '';
+export function renderPaginationButtons(
+  topContainer,
+  bottomContainer,
+  paginated,
+  i18n,
+  callbacks,
+) {
+  topContainer.innerHTML = "";
+  bottomContainer.innerHTML = "";
 
   if (paginated.hasMorePast) {
-    const btn = document.createElement('button');
-    btn.className = 'already-show-earlier';
-    btn.textContent = `${i18n.showEarlier || 'Show earlier'} (${paginated.remainingPast} remaining)`;
-    btn.addEventListener('click', callbacks.onShowEarlier);
+    const btn = document.createElement("button");
+    btn.className = "already-show-earlier";
+    btn.textContent = `${i18n.showEarlier || "Show earlier"} (${paginated.remainingPast} remaining)`;
+    btn.addEventListener("click", callbacks.onShowEarlier);
     topContainer.appendChild(btn);
   }
 
   if (paginated.hasMoreFuture) {
-    const btn = document.createElement('button');
-    btn.className = 'already-load-more';
-    btn.textContent = `${i18n.loadMore || 'Load more'} (${paginated.remainingFuture} remaining)`;
-    btn.addEventListener('click', callbacks.onLoadMore);
+    const btn = document.createElement("button");
+    btn.className = "already-load-more";
+    btn.textContent = `${i18n.loadMore || "Load more"} (${paginated.remainingFuture} remaining)`;
+    btn.addEventListener("click", callbacks.onLoadMore);
     bottomContainer.appendChild(btn);
   }
 }

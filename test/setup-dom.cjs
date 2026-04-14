@@ -1,7 +1,7 @@
-const { JSDOM } = require('jsdom');
+const { JSDOM } = require("jsdom");
 
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-  url: 'http://localhost',
+const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+  url: "http://localhost",
 });
 
 global.document = dom.window.document;

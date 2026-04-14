@@ -1,13 +1,13 @@
 /** Render the show/hide past events toggle button. */
 export function renderPastToggle(container, showingPast, onToggle, config) {
-  const i18n = (config && config.i18n) || {};
-  const showLabel = i18n.showPastEvents || 'Show past events';
-  const hideLabel = i18n.hidePastEvents || 'Hide past events';
+  const i18n = config?.i18n || {};
+  const showLabel = i18n.showPastEvents || "Show past events";
+  const hideLabel = i18n.hidePastEvents || "Hide past events";
 
-  const btn = document.createElement('button');
-  btn.className = 'already-past-toggle';
+  const btn = document.createElement("button");
+  btn.className = "already-past-toggle";
   btn.textContent = showingPast ? hideLabel : showLabel;
-  btn.addEventListener('click', onToggle);
-  container.innerHTML = '';
+  btn.addEventListener("click", onToggle);
+  container.innerHTML = "";
   container.appendChild(btn);
 }
