@@ -5,6 +5,7 @@ function storageKey(config) {
   return `${prefix}-view`;
 }
 
+/** Parse the current URL hash or path into a view state object. */
 export function parseHash() {
   // Check path for /event/{id} (allows server-side routing)
   const pathMatch = window.location.pathname.match(/\/event\/([^/]+)\/?$/);
@@ -33,6 +34,7 @@ export function parseHash() {
   return null;
 }
 
+/** Determine the initial view from config, URL, or localStorage. */
 export function getInitialView(defaultView, enabledViews, config) {
   // Priority: initialEvent > hash/path > localStorage > config default
   if (config && config.initialEvent) {
@@ -51,16 +53,19 @@ export function getInitialView(defaultView, enabledViews, config) {
   return { view: defaultView || 'month' };
 }
 
+/** Navigate to a view by setting the URL hash and saving to localStorage. */
 export function setView(view, config) {
   window.location.hash = view;
   const key = storageKey(config);
   localStorage.setItem(key, view);
 }
 
+/** Navigate to an event's detail view by setting the URL hash. */
 export function setEventDetail(eventId) {
   window.location.hash = `event/${eventId}`;
 }
 
+/** Register a callback for hash change events. */
 export function onHashChange(callback) {
   window.addEventListener('hashchange', () => {
     const parsed = parseHash();

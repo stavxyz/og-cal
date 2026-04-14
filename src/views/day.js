@@ -1,6 +1,7 @@
 import { formatDate, formatTime, isSameDay } from '../util/dates.js';
 import { createElement, bindEventClick, applyEventClasses, filterHidden, sortFeatured } from './helpers.js';
 
+/** Render the single-day event list view. */
 export function renderDayView(container, events, timezone, currentDate, config) {
   config = config || {};
   const locale = config.locale;

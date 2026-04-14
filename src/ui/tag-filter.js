@@ -1,5 +1,6 @@
 // src/ui/tag-filter.js
 
+/** Create a tag filter controller with render, getFilter, and getSelectedTags methods. */
 export function createTagFilter(onFilterChange, config) {
   const selectedTags = new Set();
   const clearLabel = (config && config.i18n && config.i18n.clearFilter) || 'Clear';

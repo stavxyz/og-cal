@@ -1,6 +1,7 @@
 import { formatDateShort, formatTime } from '../util/dates.js';
 import { createElement, bindEventClick, applyEventClasses, createEventImage, filterHidden, sortFeaturedByDate } from './helpers.js';
 
+/** Render the card grid view with thumbnails. */
 export function renderGridView(container, events, timezone, config) {
   config = config || {};
   const locale = config.locale;

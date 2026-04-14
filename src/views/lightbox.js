@@ -4,12 +4,7 @@ import { createElement } from './helpers.js';
 // Tracks the close function of any open lightbox to ensure only one exists at a time
 let currentClose = null;
 
-/**
- * Opens a fullscreen lightbox overlay for image viewing.
- * @param {string[]} images - Non-empty array of image URLs
- * @param {number} startIndex - Zero-based index of the initially displayed image
- * @param {string} altText - Shared alt text for all images (typically the event title)
- */
+/** Open a fullscreen image lightbox overlay with navigation controls. */
 export function openLightbox(images, startIndex, altText) {
   if (!images || images.length === 0) return;
 

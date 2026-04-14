@@ -83,6 +83,7 @@ const THEME_DEFAULTS = {
 // Expose defaults so consumers can extend (e.g. Already.DEFAULTS.knownPlatforms)
 export { DEFAULTS };
 
+/** Initialize an already-cal instance with the given configuration. */
 export function init(userConfig) {
   const config = { ...DEFAULTS, ...userConfig };
   config.i18n = { ...I18N_DEFAULTS, ...config.i18n };

@@ -1,6 +1,7 @@
 import { formatDate, formatTime } from '../util/dates.js';
 import { createElement, bindEventClick, applyEventClasses, filterHidden, sortFeaturedByDate } from './helpers.js';
 
+/** Render the compact chronological list view. */
 export function renderListView(container, events, timezone, config) {
   config = config || {};
   const locale = config.locale;

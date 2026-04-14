@@ -69,6 +69,7 @@ const VIEW_ICONS = {
   },
 };
 
+/** Render the view selector tab bar with icons. */
 export function renderViewSelector(container, views, activeView, isMobile, config) {
   const i18n = (config && config.i18n) || {};
   const viewLabels = { ...DEFAULT_VIEW_LABELS, ...i18n.viewLabels };

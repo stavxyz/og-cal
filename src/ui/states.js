@@ -1,3 +1,4 @@
+/** Render the loading state (custom renderer or default pulse animation). */
 export function renderLoading(container, config) {
   if (config && config.renderLoading) {
     const result = config.renderLoading();
@@ -17,6 +18,7 @@ export function renderLoading(container, config) {
     </div>`;
 }
 
+/** Render the empty state when no events match (custom renderer or default). */
 export function renderEmpty(container, hasPastEvents, onShowPast, config) {
   const i18n = (config && config.i18n) || {};
   const noUpcomingEvents = i18n.noUpcomingEvents || 'No upcoming events.';
@@ -47,6 +49,7 @@ export function renderEmpty(container, hasPastEvents, onShowPast, config) {
   }
 }
 
+/** Render the error state with retry button (custom renderer or default). */
 export function renderError(container, message, onRetry, config) {
   const i18n = (config && config.i18n) || {};
   const couldNotLoad = i18n.couldNotLoad || 'Could not load events.';

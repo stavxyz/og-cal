@@ -1,5 +1,6 @@
 import { escapeHtml } from '../util/sanitize.js';
 
+/** Render the calendar header: name, description, icon, and subscribe button. */
 export function renderHeader(container, calendarData, config) {
   if (!config.showHeader) {
     container.innerHTML = '';
