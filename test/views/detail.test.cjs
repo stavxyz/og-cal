@@ -1,8 +1,8 @@
 // test/views/detail.test.js
-require('../setup-dom.js');
+require('../setup-dom.cjs');
 const { describe, it, before, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { createTestEvent } = require('../helpers.js');
+const { createTestEvent } = require('../helpers.cjs');
 
 let renderDetailView;
 
