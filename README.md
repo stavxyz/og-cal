@@ -447,6 +447,14 @@ iframe.contentWindow.postMessage({
 
 Messages must have `type: "already:config"` and a `config` object. Other messages are silently ignored.
 
+### Cleanup
+
+Call `destroy()` to remove event listeners and clear the mount element:
+
+```js
+cal.destroy();
+```
+
 ## Accessibility
 
 - All interactive elements have `tabindex="0"` and `role="button"` or `role="tab"`
