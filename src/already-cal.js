@@ -1,6 +1,6 @@
 import { loadData } from "./data.js";
 import { getInitialView, onHashChange, parseHash, setView } from "./router.js";
-import { resolveTheme } from "./theme.js";
+import { applyTheme } from "./theme.js";
 import { renderHeader } from "./ui/header.js";
 import { paginateEvents, renderPaginationButtons } from "./ui/pagination.js";
 import { renderPastToggle } from "./ui/past-toggle.js";
@@ -102,7 +102,6 @@ export function init(userConfig) {
       ? config.pageSize
       : DEFAULTS.pageSize;
 
-  const themeConfig = resolveTheme(config.theme);
   const el =
     typeof config.el === "string"
       ? document.querySelector(config.el)
@@ -113,22 +112,10 @@ export function init(userConfig) {
     return;
   }
 
-  // Set theme data attributes
-  el.dataset.layout = themeConfig.layout;
-  el.dataset.orientation = themeConfig.orientation;
-  el.dataset.imagePosition = themeConfig.imagePosition;
-  el.dataset.palette = themeConfig.palette;
-
-  // Apply CSS custom property overrides (from user config, not palette)
-  for (const [key, value] of Object.entries(themeConfig.overrides)) {
-    const prop = `--already-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
-    el.style.setProperty(prop, value);
-  }
+  const themeResult = applyTheme(el, config.theme, []);
+  config._theme = themeResult;
 
   el.classList.add("already");
-
-  // Store resolved theme for view renderers
-  config._theme = themeConfig;
 
   // Create layout
   const headerContainer = document.createElement("div");
