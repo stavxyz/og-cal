@@ -60,3 +60,36 @@ export function resolveTheme(theme) {
 
   return { layout, orientation, imagePosition, palette, overrides };
 }
+
+/**
+ * Apply a theme config to a DOM element. Resolves the theme, sets data
+ * attributes, clears previous CSS overrides, and applies new ones.
+ *
+ * @param {HTMLElement} el - The container element
+ * @param {string|object} themeInput - Raw theme config (string shorthand or object)
+ * @param {string[]} previousOverrideKeys - CSS property names set by a prior applyTheme call
+ * @returns {{ layout, palette, orientation, imagePosition, overrides, overrideKeys }}
+ */
+export function applyTheme(el, themeInput, previousOverrideKeys) {
+  const theme = resolveTheme(themeInput);
+
+  el.dataset.layout = theme.layout;
+  el.dataset.orientation = theme.orientation;
+  el.dataset.imagePosition = theme.imagePosition;
+  el.dataset.palette = theme.palette;
+
+  // Clear previous CSS overrides
+  for (const prop of previousOverrideKeys) {
+    el.style.removeProperty(prop);
+  }
+
+  // Apply new CSS overrides
+  const overrideKeys = [];
+  for (const [key, value] of Object.entries(theme.overrides)) {
+    const prop = `--already-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+    el.style.setProperty(prop, value);
+    overrideKeys.push(prop);
+  }
+
+  return { ...theme, overrideKeys };
+}
