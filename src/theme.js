@@ -10,7 +10,7 @@ const THEME_KEYS = new Set([
   "palette",
 ]);
 
-const THEME_DEFAULTS = {
+export const THEME_DEFAULTS = {
   layout: "clean",
   orientation: "vertical",
   imagePosition: "left",
