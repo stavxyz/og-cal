@@ -1,4 +1,5 @@
 import { getLayout } from "../layouts/registry.js";
+import { THEME_DEFAULTS } from "../theme.js";
 import {
   bindEventClick,
   createElement,
@@ -11,11 +12,7 @@ import { isPast } from "../util/dates.js";
 export function renderGridView(container, events, timezone, config) {
   config = config || {};
   const locale = config.locale;
-  const theme = config._theme || {
-    layout: "clean",
-    orientation: "vertical",
-    imagePosition: "left",
-  };
+  const theme = config._theme || THEME_DEFAULTS;
 
   events = filterHidden(events);
   events = sortFeaturedByDate(events, timezone, locale);

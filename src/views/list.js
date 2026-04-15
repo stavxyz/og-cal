@@ -1,4 +1,5 @@
 import { getLayout } from "../layouts/registry.js";
+import { THEME_DEFAULTS } from "../theme.js";
 import {
   bindEventClick,
   createElement,
@@ -11,11 +12,7 @@ import { isPast } from "../util/dates.js";
 export function renderListView(container, events, timezone, config) {
   config = config || {};
   const locale = config.locale;
-  const theme = config._theme || {
-    layout: "clean",
-    orientation: "vertical",
-    imagePosition: "left",
-  };
+  const theme = config._theme || THEME_DEFAULTS;
 
   // List view defaults to horizontal orientation
   const orientation =
