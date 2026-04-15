@@ -505,6 +505,25 @@ export function init(userConfig) {
     );
   });
 
+  // postMessage listener for cross-origin config updates (e.g. iframe embeds).
+  // Origin is not checked — this widget accepts config from any embedder.
+  // setConfig() only modifies theme/view settings, not data or callbacks.
+  function handleMessage(event) {
+    if (
+      event.data &&
+      typeof event.data === "object" &&
+      !Array.isArray(event.data) &&
+      event.data.type === "already:config" &&
+      event.data.config &&
+      typeof event.data.config === "object" &&
+      !Array.isArray(event.data.config)
+    ) {
+      instance.setConfig(event.data.config);
+    }
+  }
+
+  window.addEventListener("message", handleMessage);
+
   _instance = instance;
   return instance;
 }
