@@ -342,6 +342,14 @@ iframe.contentWindow.postMessage({
 
 The `"already:config"` type prefix is required. Messages without it are silently ignored. The `config` object has the same shape as the `setConfig()` argument.
 
+### `instance.destroy()`
+
+Removes event listeners (`resize`, `postMessage`) and clears the mount element. If the instance is the current `_instance`, it is set to `null`.
+
+```js
+cal.destroy();
+```
+
 ## Data Attributes
 
 The most common options are available as HTML `data-` attributes for zero-JS setup. Options not listed here — including `showHeader`, `headerTitle`, `headerDescription`, `headerIcon`, `subscribeUrl`, `pageSize`, `sticky`, `initialEvent`, `imageExtensions`, `knownPlatforms`, `sanitization`, `i18n`, `data`, callbacks, data hooks, and custom renderers — require JavaScript initialization.

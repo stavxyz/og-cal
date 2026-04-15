@@ -5149,21 +5149,30 @@ ${text}</tr>
         renderView(lastViewState);
       }
     }
-    const instance = { setConfig: setConfig2 };
-    start();
-    window.addEventListener("resize", () => {
+    function handleResize() {
       updateStickyOffsets(
         stickyConfig,
         headerContainer,
         selectorContainer,
         tagFilterContainer
       );
-    });
+    }
     function handleMessage(event) {
       if (event.data && typeof event.data === "object" && !Array.isArray(event.data) && event.data.type === "already:config" && event.data.config && typeof event.data.config === "object" && !Array.isArray(event.data.config)) {
         instance.setConfig(event.data.config);
       }
     }
+    function destroy() {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("message", handleMessage);
+      el.innerHTML = "";
+      if (_instance === instance) {
+        _instance = null;
+      }
+    }
+    const instance = { setConfig: setConfig2, destroy };
+    start();
+    window.addEventListener("resize", handleResize);
     window.addEventListener("message", handleMessage);
     _instance = instance;
     return instance;

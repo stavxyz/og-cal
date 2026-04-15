@@ -287,3 +287,74 @@ describe("global setConfig export", () => {
     assert.strictEqual(container.dataset.palette, "dark");
   });
 });
+
+describe("destroy()", () => {
+  it("is returned on the instance object", () => {
+    const { instance } = createInitedInstance();
+    assert.strictEqual(typeof instance.destroy, "function");
+  });
+
+  it("clears the mount element", async () => {
+    const { instance, container } = createInitedInstance();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.ok(container.innerHTML.length > 0, "container should have content");
+    instance.destroy();
+    assert.strictEqual(container.innerHTML, "");
+  });
+
+  it("nulls _instance when it matches", async () => {
+    const mod = await import("../src/already-cal.js");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const instance = mod.init({
+      el: container,
+      data: {
+        events: [createTestEvent()],
+        calendar: { name: "Test", description: "", timezone: "UTC" },
+      },
+    });
+    assert.strictEqual(mod._instance, instance);
+    instance.destroy();
+    assert.strictEqual(mod._instance, null);
+  });
+
+  it("does not null _instance when a newer instance exists", async () => {
+    const mod = await import("../src/already-cal.js");
+    const container1 = document.createElement("div");
+    const container2 = document.createElement("div");
+    document.body.appendChild(container1);
+    document.body.appendChild(container2);
+    const cfg = {
+      data: {
+        events: [createTestEvent()],
+        calendar: { name: "Test", description: "", timezone: "UTC" },
+      },
+    };
+    const first = mod.init({ el: container1, ...cfg });
+    const second = mod.init({ el: container2, ...cfg });
+    assert.strictEqual(mod._instance, second);
+    first.destroy();
+    assert.strictEqual(mod._instance, second, "_instance should still be the newer instance");
+  });
+
+  it("removes the postMessage listener", async () => {
+    const { instance, container } = createInitedInstance();
+    await new Promise((r) => setTimeout(r, 10));
+    instance.destroy();
+    // After destroy, postMessage should not update the cleared container
+    window.dispatchEvent(
+      new window.MessageEvent("message", {
+        data: { type: "already:config", config: { theme: { palette: "dark" } } },
+      }),
+    );
+    assert.strictEqual(container.innerHTML, "", "container should remain empty after postMessage");
+  });
+
+  it("removes the resize listener", async () => {
+    const { instance } = createInitedInstance();
+    await new Promise((r) => setTimeout(r, 10));
+    instance.destroy();
+    // Should not throw when resize fires after destroy
+    window.dispatchEvent(new window.Event("resize"));
+  });
+});

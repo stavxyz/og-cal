@@ -526,19 +526,14 @@ export function init(userConfig) {
     }
   }
 
-  const instance = { setConfig };
-
-  start();
-
-  // TODO(#30): remove listener in destroy()
-  window.addEventListener("resize", () => {
+  function handleResize() {
     updateStickyOffsets(
       stickyConfig,
       headerContainer,
       selectorContainer,
       tagFilterContainer,
     );
-  });
+  }
 
   // postMessage listener for cross-origin config updates (e.g. iframe embeds).
   // Origin is not checked — this widget accepts config from any embedder.
@@ -557,7 +552,20 @@ export function init(userConfig) {
     }
   }
 
-  // TODO(#30): remove listener in destroy()
+  function destroy() {
+    window.removeEventListener("resize", handleResize);
+    window.removeEventListener("message", handleMessage);
+    el.innerHTML = "";
+    if (_instance === instance) {
+      _instance = null;
+    }
+  }
+
+  const instance = { setConfig, destroy };
+
+  start();
+
+  window.addEventListener("resize", handleResize);
   window.addEventListener("message", handleMessage);
 
   _instance = instance;
