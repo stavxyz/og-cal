@@ -83,6 +83,9 @@ const I18N_DEFAULTS = {
 // Expose defaults so consumers can extend (e.g. Already.DEFAULTS.knownPlatforms)
 export { DEFAULTS };
 
+/** The most recently created instance. In multi-instance setups, only the last init()'d instance is stored here. */
+export let _instance = null;
+
 /** Initialize an already-cal instance with the given configuration. */
 export function init(userConfig) {
   const config = { ...DEFAULTS, ...userConfig };
@@ -112,7 +115,7 @@ export function init(userConfig) {
     return;
   }
 
-  const themeResult = applyTheme(el, config.theme, []);
+  let themeResult = applyTheme(el, config.theme, []);
   config._theme = themeResult;
 
   el.classList.add("already");
@@ -459,6 +462,38 @@ export function init(userConfig) {
     });
   }
 
+  function setConfig(newConfig) {
+    if (!newConfig || typeof newConfig !== "object") return;
+    // Theme update
+    if (newConfig.theme !== undefined) {
+      themeResult = applyTheme(el, newConfig.theme, themeResult.overrideKeys);
+      config._theme = themeResult;
+    }
+
+    // Merge non-theme config keys
+    if (newConfig.views !== undefined) config.views = newConfig.views;
+    if (newConfig.showPastEvents !== undefined) {
+      showPast = newConfig.showPastEvents;
+      config.showPastEvents = newConfig.showPastEvents;
+    }
+    if (newConfig.pageSize !== undefined) {
+      config.pageSize =
+        Number.isFinite(newConfig.pageSize) && newConfig.pageSize > 0
+          ? newConfig.pageSize
+          : config.pageSize;
+    }
+    if (newConfig.defaultView !== undefined)
+      config.defaultView = newConfig.defaultView;
+
+    // Re-render current view if data is loaded and we have a view state
+    if (data && lastViewState) {
+      paginationState = { futureCount: 0, pastCount: 0 };
+      renderView(lastViewState);
+    }
+  }
+
+  const instance = { setConfig };
+
   start();
 
   window.addEventListener("resize", () => {
@@ -469,6 +504,9 @@ export function init(userConfig) {
       tagFilterContainer,
     );
   });
+
+  _instance = instance;
+  return instance;
 }
 
 // Auto-init from data attributes
