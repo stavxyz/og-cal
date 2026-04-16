@@ -180,6 +180,19 @@ knownPlatforms: [
 ],
 ```
 
+### `Already.DEFAULTS`
+
+The full default config object is exported as `Already.DEFAULTS`. Use it to extend arrays like `knownPlatforms` without replacing the built-in entries:
+
+```js
+knownPlatforms: [
+  ...Already.DEFAULTS.knownPlatforms,
+  { pattern: /your-site\.com/i, label: 'Visit Our Site' },
+],
+```
+
+`Already.DEFAULTS` is read-only at runtime — mutating it does not affect existing instances.
+
 ## Sanitization
 
 | Option | Type | Default | Description |
