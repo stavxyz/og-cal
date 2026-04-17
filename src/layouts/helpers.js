@@ -56,3 +56,20 @@ export function buildBadge(isoString, timezone, locale) {
   badge.appendChild(month);
   return badge;
 }
+
+/**
+ * Render a minimal error card when a layout render function fails.
+ * Shows the event title so the user can identify the affected event.
+ */
+export function renderErrorCard(event) {
+  const card = createElement("div", "already-card already-card--error");
+  const body = createElement("div", "already-card__body");
+  const title = createElement("div", "already-card__title");
+  title.textContent = event.title || "Unknown Event";
+  body.appendChild(title);
+  const msg = createElement("div", "already-card__meta");
+  msg.textContent = "Render error";
+  body.appendChild(msg);
+  card.appendChild(body);
+  return card;
+}

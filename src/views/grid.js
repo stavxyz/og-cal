@@ -1,3 +1,4 @@
+import { renderErrorCard } from "../layouts/helpers.js";
 import { getLayout } from "../layouts/registry.js";
 import { THEME_DEFAULTS } from "../theme.js";
 import { isPast } from "../util/dates.js";
@@ -22,14 +23,28 @@ export function renderGridView(container, events, timezone, config) {
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
-    const card = renderCard(event, {
-      orientation: theme.orientation,
-      imagePosition: theme.imagePosition,
-      index: i,
-      timezone,
-      locale,
-      config,
-    });
+    let card;
+    try {
+      card = renderCard(event, {
+        orientation: theme.orientation,
+        imagePosition: theme.imagePosition,
+        index: i,
+        timezone,
+        locale,
+        config,
+      });
+      if (
+        !(card instanceof HTMLElement) &&
+        !(card instanceof DocumentFragment)
+      ) {
+        throw new TypeError(
+          `Layout returned ${typeof card} instead of HTMLElement`,
+        );
+      }
+    } catch (err) {
+      console.warn(`Layout render error for "${event.title}":`, err);
+      card = renderErrorCard(event);
+    }
 
     // Add modifier classes via classList (not applyEventClasses which
     // overwrites className and would destroy layout-specific classes)
