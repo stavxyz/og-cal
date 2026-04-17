@@ -137,7 +137,11 @@ describe("theme registry — validator accepts valid bundles", () => {
   it("accepts a bundle with all valid sections", () => {
     register("theme", "valid-full", {
       layout: "hero",
-      defaults: { orientation: "horizontal", imagePosition: "alternating", palette: "dark" },
+      defaults: {
+        orientation: "horizontal",
+        imagePosition: "alternating",
+        palette: "dark",
+      },
       constraints: { orientation: "horizontal" },
       overrides: { primary: "#2563eb", fontSizeSm: "0.7rem" },
     });
