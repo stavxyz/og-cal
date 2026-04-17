@@ -3160,7 +3160,8 @@ ${text}</tr>
       attachments,
       tags,
       featured,
-      hidden
+      hidden,
+      htmlLink: event.htmlLink || ""
     };
   }
   async function fetchGoogleCalendar({ apiKey, calendarId, maxResults = 50 }, config) {

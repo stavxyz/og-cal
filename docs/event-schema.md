@@ -99,6 +99,7 @@ When using `config.data`, provide this structure:
       image: null,
       images: [],
       links: [],
+      htmlLink: '',
       attachments: [],
       tags: [],
       featured: false,

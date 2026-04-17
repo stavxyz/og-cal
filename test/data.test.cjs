@@ -2,9 +2,11 @@ const { describe, it, before } = require("node:test");
 const assert = require("node:assert");
 
 let transformGoogleEvents;
+let enrichEvent;
 before(async () => {
   const mod = await import("../src/data.js");
   transformGoogleEvents = mod.transformGoogleEvents;
+  enrichEvent = mod.enrichEvent;
 });
 
 describe("transformGoogleEvents", () => {
@@ -94,6 +96,17 @@ describe("transformGoogleEvents — field mapping", () => {
       ],
     });
     assert.strictEqual(data.events[0].htmlLink, "");
+  });
+
+  it("normalizes htmlLink to empty string for pre-loaded events", () => {
+    const event = enrichEvent({
+      id: "1",
+      title: "Pre-loaded Event",
+      description: "",
+      start: "2099-06-15T10:00:00Z",
+      end: "2099-06-15T11:00:00Z",
+    });
+    assert.strictEqual(event.htmlLink, "");
   });
 });
 
