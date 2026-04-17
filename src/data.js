@@ -170,6 +170,7 @@ export function enrichEvent(event, config) {
     tags,
     featured,
     hidden,
+    htmlLink: event.htmlLink || "",
   };
 }
 
