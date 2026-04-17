@@ -55,15 +55,11 @@ function validateBundle(name, bundle) {
         typeof bundle[section] !== "object" ||
         Array.isArray(bundle[section])
       ) {
-        throw new Error(
-          `Theme "${name}": ${section} must be a plain object`,
-        );
+        throw new Error(`Theme "${name}": ${section} must be a plain object`);
       }
       for (const [key, value] of Object.entries(bundle[section])) {
         if (!DIMENSION_KEYS.has(key)) {
-          throw new Error(
-            `Theme "${name}": unknown ${section} key "${key}"`,
-          );
+          throw new Error(`Theme "${name}": unknown ${section} key "${key}"`);
         }
         if (!DIMENSION_VALIDATORS[key].has(value)) {
           throw new Error(
