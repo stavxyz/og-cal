@@ -45,14 +45,19 @@ export function renderListView(container, events, timezone, config) {
         );
       }
     } catch (err) {
-      console.warn(`Layout render error for "${event.title}":`, err);
+      console.warn(
+        `already-cal: Layout render error for "${event.title}":`,
+        err,
+      );
       card = renderErrorCard(event);
     }
 
-    if (isPast(event.start)) card.classList.add("already-card--past");
-    if (event.featured) card.classList.add("already-card--featured");
-    card.dataset.eventId = event.id;
-    bindEventClick(card, event, "list", config);
+    if (!card.classList.contains("already-card--error")) {
+      if (isPast(event.start)) card.classList.add("already-card--past");
+      if (event.featured) card.classList.add("already-card--featured");
+      card.dataset.eventId = event.id;
+      bindEventClick(card, event, "list", config);
+    }
 
     list.appendChild(card);
   }

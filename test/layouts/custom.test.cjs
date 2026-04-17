@@ -3,11 +3,10 @@ const { describe, it, before, afterEach } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
 
-let renderGridView, renderListView, register, _resetForTesting;
+let renderGridView, renderListView, register;
 
 before(async () => {
   const reg = await import("../../src/registry.js");
-  _resetForTesting = reg._resetForTesting;
 
   // Import layout registry (triggers defineType + registerBuiltIn for "layout")
   await import("../../src/layouts/registry.js");
