@@ -26,6 +26,13 @@ describe("registry — defineType", () => {
     defineType("dup", () => {});
     assert.throws(() => defineType("dup", () => {}), /already defined/);
   });
+
+  it("throws when validator is not a function", () => {
+    assert.throws(
+      () => defineType("bad", "not-a-fn"),
+      /validator must be a function/,
+    );
+  });
 });
 
 describe("registry — registerBuiltIn", () => {
@@ -34,6 +41,21 @@ describe("registry — registerBuiltIn", () => {
     registerBuiltIn("widget", "default", () => "built-in");
     assert.strictEqual(has("widget", "default"), true);
     assert.strictEqual(get("widget", "default")(), "built-in");
+  });
+
+  it("throws for undefined type", () => {
+    assert.throws(
+      () => registerBuiltIn("unknown", "x", () => {}),
+      /not defined/i,
+    );
+  });
+
+  it("throws on empty name", () => {
+    defineType("widget", () => {});
+    assert.throws(
+      () => registerBuiltIn("widget", "", () => {}),
+      /non-empty string/i,
+    );
   });
 });
 
