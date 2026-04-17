@@ -1,4 +1,6 @@
-const VALID_LAYOUTS = new Set(["clean", "hero", "badge", "compact"]);
+import { has } from "./registry.js";
+import "./layouts/registry.js";
+
 const VALID_PALETTES = new Set(["light", "dark", "warm", "cool"]);
 const VALID_ORIENTATIONS = new Set(["vertical", "horizontal"]);
 const VALID_IMAGE_POSITIONS = new Set(["left", "right", "alternating"]);
@@ -27,7 +29,7 @@ export function resolveTheme(theme) {
   }
   const input = theme || {};
 
-  const layout = VALID_LAYOUTS.has(input.layout)
+  const layout = has("layout", input.layout)
     ? input.layout
     : THEME_DEFAULTS.layout;
 
