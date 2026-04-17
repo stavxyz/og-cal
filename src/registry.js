@@ -6,6 +6,11 @@ export function defineType(type, validator) {
   if (registries[type]) {
     throw new Error(`Registry type "${type}" is already defined`);
   }
+  if (typeof validator !== "function") {
+    throw new TypeError(
+      `Registry "${type}": validator must be a function, got: ${typeof validator}`,
+    );
+  }
   registries[type] = new Map();
   builtIns[type] = new Set();
   validators[type] = validator;
@@ -13,6 +18,11 @@ export function defineType(type, validator) {
 
 export function registerBuiltIn(type, name, impl) {
   assertTypeDefined(type);
+  if (typeof name !== "string" || name === "") {
+    throw new Error(
+      `Registry "${type}": name must be a non-empty string, got: ${typeof name}`,
+    );
+  }
   validators[type](name, impl);
   registries[type].set(name, impl);
   builtIns[type].add(name);
