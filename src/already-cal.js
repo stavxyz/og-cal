@@ -102,30 +102,36 @@ export function registerLayout(name, renderFn) {
  * layout registry under the theme name. Built-in names cannot be overridden.
  */
 export function registerTheme(name, bundle) {
-  const processed = { ...bundle };
-  if (typeof bundle.layout === "function") {
-    register("layout", name, bundle.layout);
-    processed.layout = name;
+  if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
+    throw new Error(`registerTheme("${name}"): bundle must be a plain object`);
   }
-  register("theme", name, processed);
+  const hasLayoutFn = typeof bundle.layout === "function";
+  // Validate with the original bundle (function layout passes validation).
+  // This ensures invalid bundles never cause side effects in the layout registry.
+  register("theme", name, bundle);
+  if (hasLayoutFn) {
+    register("layout", name, bundle.layout);
+    // Update stored theme entry to use the string name instead of the function
+    register("theme", name, { ...bundle, layout: name });
+  }
   addThemeName(name);
   THEMES = buildThemesSnapshot();
 }
+
+const SNAPSHOT_OPTIONAL_KEYS = ["defaults", "constraints", "overrides"];
 
 function buildThemesSnapshot() {
   const result = {};
   for (const name of getThemeNames()) {
     const bundle = getTheme(name);
-    if (bundle) {
-      const copy = { layout: bundle.layout };
-      if (bundle.defaults)
-        copy.defaults = Object.freeze({ ...bundle.defaults });
-      if (bundle.constraints)
-        copy.constraints = Object.freeze({ ...bundle.constraints });
-      if (bundle.overrides)
-        copy.overrides = Object.freeze({ ...bundle.overrides });
-      result[name] = Object.freeze(copy);
+    if (!bundle) continue;
+    const copy = { layout: bundle.layout };
+    for (const key of SNAPSHOT_OPTIONAL_KEYS) {
+      if (bundle[key]) {
+        copy[key] = Object.freeze({ ...bundle[key] });
+      }
     }
+    result[name] = Object.freeze(copy);
   }
   return Object.freeze(result);
 }
@@ -189,7 +195,9 @@ export function init(userConfig) {
     const errorDiv = document.createElement("div");
     errorDiv.className = "already-error";
     const p = document.createElement("p");
-    p.textContent = err.message;
+    p.textContent = err.message?.startsWith("already-cal:")
+      ? err.message
+      : "Could not initialize calendar. Check the browser console for details.";
     errorDiv.appendChild(p);
     el.appendChild(errorDiv);
     throw err;
@@ -577,7 +585,7 @@ export function init(userConfig) {
         themeResult = newThemeResult;
         config._theme = newThemeResult;
       } catch (err) {
-        console.error(err.message);
+        console.error("already-cal: theme update failed:", err);
       }
     }
 

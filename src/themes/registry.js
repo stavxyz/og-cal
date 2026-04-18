@@ -19,10 +19,14 @@ const DIMENSION_VALIDATORS = {
   palette: VALID_PALETTES,
 };
 
+function isPlainObject(value) {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
 const themeNames = [];
 
 function validateBundle(name, bundle) {
-  if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
+  if (!isPlainObject(bundle)) {
     throw new Error(`Theme "${name}": bundle must be a plain object`);
   }
 
@@ -50,11 +54,7 @@ function validateBundle(name, bundle) {
 
   for (const section of ["defaults", "constraints"]) {
     if (bundle[section] !== undefined) {
-      if (
-        !bundle[section] ||
-        typeof bundle[section] !== "object" ||
-        Array.isArray(bundle[section])
-      ) {
+      if (!isPlainObject(bundle[section])) {
         throw new Error(`Theme "${name}": ${section} must be a plain object`);
       }
       for (const [key, value] of Object.entries(bundle[section])) {
@@ -71,11 +71,7 @@ function validateBundle(name, bundle) {
   }
 
   if (bundle.overrides !== undefined) {
-    if (
-      !bundle.overrides ||
-      typeof bundle.overrides !== "object" ||
-      Array.isArray(bundle.overrides)
-    ) {
+    if (!isPlainObject(bundle.overrides)) {
       throw new Error(`Theme "${name}": overrides must be a plain object`);
     }
   }
@@ -83,20 +79,17 @@ function validateBundle(name, bundle) {
 
 defineType("theme", validateBundle);
 
-registerBuiltIn("theme", "clean", { layout: "clean" });
-themeNames.push("clean");
+const BUILT_IN_THEMES = [
+  ["clean", { layout: "clean" }],
+  ["hero", { layout: "hero" }],
+  ["badge", { layout: "badge" }],
+  ["compact", { layout: "compact", constraints: { orientation: "vertical" } }],
+];
 
-registerBuiltIn("theme", "hero", { layout: "hero" });
-themeNames.push("hero");
-
-registerBuiltIn("theme", "badge", { layout: "badge" });
-themeNames.push("badge");
-
-registerBuiltIn("theme", "compact", {
-  layout: "compact",
-  constraints: { orientation: "vertical" },
-});
-themeNames.push("compact");
+for (const [name, bundle] of BUILT_IN_THEMES) {
+  registerBuiltIn("theme", name, bundle);
+  themeNames.push(name);
+}
 
 export function getTheme(name) {
   return get("theme", name);

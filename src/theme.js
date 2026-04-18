@@ -1,6 +1,7 @@
 import { has } from "./registry.js";
-// Side-effect import: initializes the "theme" registry type and registers
-// built-in bundles. Also transitively initializes the "layout" registry.
+// Importing from themes/registry.js also triggers module-level calls that
+// initialize the "theme" registry type, register built-in bundles, and
+// transitively initialize the "layout" registry.
 import {
   getTheme,
   VALID_IMAGE_POSITIONS,
@@ -25,7 +26,9 @@ export const THEME_DEFAULTS = {
 /**
  * Resolve a single dimension (orientation, imagePosition, palette) through
  * the priority chain: constraint > user > bundle default > THEME_DEFAULTS.
- * Throws when a user value conflicts with a bundle constraint.
+ * Throws when a user value conflicts with a bundle constraint. Invalid user
+ * values (not in the valid set) trigger a console.warn and fall through to
+ * the bundle default or THEME_DEFAULTS.
  */
 function resolveDimension(dimension, userValue, bundle, validSet, themeName) {
   const constraint = bundle?.constraints?.[dimension];
@@ -40,8 +43,13 @@ function resolveDimension(dimension, userValue, bundle, validSet, themeName) {
     return constraint;
   }
 
-  if (userValue !== undefined && validSet.has(userValue)) {
-    return userValue;
+  if (userValue !== undefined) {
+    if (validSet.has(userValue)) {
+      return userValue;
+    }
+    console.warn(
+      `already-cal: Invalid ${dimension} "${userValue}", falling back to default`,
+    );
   }
 
   if (bundleDefault !== undefined) {
@@ -58,6 +66,9 @@ function resolveDimension(dimension, userValue, bundle, validSet, themeName) {
  * Checks the theme bundle registry first. If the layout names a registered
  * bundle, applies its defaults, constraints, and CSS overrides with the
  * priority chain: constraint > user > bundle default > THEME_DEFAULTS.
+ *
+ * Note: imagePosition is forced to THEME_DEFAULTS.imagePosition when
+ * orientation is not "horizontal", regardless of the priority chain result.
  *
  * Throws on constraint violations (user value conflicts with bundle constraint).
  */
@@ -124,7 +135,7 @@ export function resolveTheme(theme) {
       userOverrides[key] = value;
     }
   }
-  const overrides = { ...(bundle?.overrides || {}), ...userOverrides };
+  const overrides = { ...(bundle?.overrides ?? {}), ...userOverrides };
 
   return { layout, orientation, imagePosition, palette, overrides };
 }
