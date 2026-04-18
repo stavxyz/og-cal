@@ -273,6 +273,120 @@ Return `true` to keep, `false` to exclude. Runs after `eventTransform`.
 eventFilter: (event) => !event.title.includes('[INTERNAL]'),
 ```
 
+## Custom Themes
+
+Theme bundles package a layout, palette/orientation defaults, constraints, and CSS custom property overrides into a single reusable unit that can be referenced by name anywhere a theme is accepted.
+
+### `Already.registerTheme(name, bundle)`
+
+Register a named theme bundle.
+
+- **`name`** — non-empty string. Built-in names (`clean`, `hero`, `badge`, `compact`) cannot be overridden — throws.
+- **`bundle`** — plain object with any combination of `layout`, `defaults`, `constraints`, and `overrides`. Unknown keys throw.
+
+```js
+Already.registerTheme("timeline", {
+  layout: (event, options) => {
+    const card = document.createElement("div");
+    card.className = "already-card already-card--timeline";
+    const title = document.createElement("div");
+    title.className = "already-card__title";
+    title.textContent = event.title;
+    card.appendChild(title);
+    const meta = document.createElement("div");
+    meta.className = "already-card__meta";
+    meta.textContent = new Date(event.start).toLocaleDateString(options.locale);
+    card.appendChild(meta);
+    return card;
+  },
+  defaults: { orientation: "vertical", imagePosition: "left", palette: "light" },
+  constraints: { orientation: "vertical" },
+  overrides: { primary: "#2563eb", fontSizeSm: "0.7rem" },
+});
+
+Already.init({ el: "#cal", theme: "timeline" });
+```
+
+### Bundle shape
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `layout` | function or string | Render function (auto-registered as a layout under the theme name), or name of an existing registered layout. Optional — if omitted, uses the user's layout choice or the default `"clean"`. |
+| `defaults` | object | Default values for `orientation`, `imagePosition`, and/or `palette`. Applied when the user does not provide that dimension. |
+| `constraints` | object | Enforced values for `orientation`, `imagePosition`, and/or `palette`. The user cannot override these — a conflict throws (from `init()`) or logs via `console.error` (from `setConfig()`). |
+| `overrides` | object | CSS custom property values. Keys are camelCase and become `--already-{kebab-case}` inline styles on the mount element. |
+
+Valid dimension values:
+- `orientation`: `"vertical"`, `"horizontal"`
+- `imagePosition`: `"left"`, `"right"`, `"alternating"`
+- `palette`: `"light"`, `"dark"`, `"warm"`, `"cool"`
+
+### String shorthand
+
+When `theme` is a string (e.g., `theme: "timeline"`), the name is looked up in the bundle registry first. If a bundle exists, its layout, defaults, constraints, and overrides are applied. If no bundle is found, the name is treated as a layout name and looked up in the layout registry. If neither registry has it, the layout falls back to `"clean"` with a `console.warn`.
+
+The same bundle lookup applies when `theme` is an object — if `theme.layout` names a registered bundle, that bundle's defaults, constraints, and overrides are applied (e.g., `theme: { layout: "timeline", palette: "dark" }`).
+
+### Priority chain
+
+Each dimension (`orientation`, `imagePosition`, `palette`) is resolved in this order:
+
+```
+constraint (enforced, throws/logs if user contradicts)
+  > user-provided value
+    > bundle default
+      > THEME_DEFAULTS (vertical, left, light)
+```
+
+### CSS overrides
+
+User CSS overrides win over bundle overrides — they are merged, with user values taking precedence:
+
+```js
+// Bundle defines: overrides: { primary: "#2563eb" }
+// User provides:  theme: { primary: "#e63946" }
+// Result:         --already-primary: #e63946 (user wins)
+```
+
+### Error handling
+
+- **`init()`** — renders a minimal error message in the container element (not the configurable `renderError` state) and also throws. Use a try/catch if you want to handle it programmatically.
+- **`setConfig()`** — logs the error via `console.error` and leaves the current theme unchanged.
+
+### `Already.THEMES`
+
+A frozen snapshot of all registered theme bundles (built-in and custom). Updated each time `registerTheme()` is called. Returns copies, not live references.
+
+```js
+console.log(Already.THEMES);
+// {
+//   clean: { layout: "clean" },
+//   hero: { layout: "hero" },
+//   badge: { layout: "badge" },
+//   compact: { layout: "compact", constraints: { orientation: "vertical" } },
+//   timeline: { layout: "timeline", defaults: {...}, constraints: {...}, overrides: {...} },
+// }
+```
+
+### Auto-registration of layout functions
+
+When `bundle.layout` is a render function, it is automatically registered in the layout registry under the theme name. You do not need to call `Already.registerLayout()` separately:
+
+```js
+// These are equivalent:
+
+// Option A: registerTheme with inline function (auto-registers layout)
+Already.registerTheme("timeline", { layout: myRenderFn, ... });
+
+// Option B: register layout first, then reference by name
+Already.registerLayout("timeline", myRenderFn);
+Already.registerTheme("timeline", { layout: "timeline", ... });
+```
+
+### Re-registration
+
+Custom themes can be re-registered (replacing the previous bundle). Built-in theme names (`clean`, `hero`, `badge`, `compact`) cannot be re-registered — throws.
+
 ## Custom Layouts
 
 Register custom card layouts via `Already.registerLayout(name, renderFn)`. The render function receives an event object and an options object, and must return an `HTMLElement`.

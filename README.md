@@ -327,6 +327,34 @@ Already.init({ el: '#cal', theme: { layout: 'timeline' } });
 
 The render function receives an event and an options object (`orientation`, `imagePosition`, `index`, `timezone`, `locale`, `config`) and must return an `HTMLElement`. If a custom layout throws or returns something invalid, an error card is rendered in its place and the error is logged via `console.error`. Built-in layout names cannot be overridden. See the [full custom layout reference](docs/configuration.md#custom-layouts) for details.
 
+### Custom Theme Bundles
+
+Package a layout, dimension defaults, constraints, and CSS overrides into a named bundle via `Already.registerTheme()`:
+
+```js
+Already.registerTheme("timeline", {
+  layout: (event, options) => {
+    const card = document.createElement("div");
+    card.className = "already-card already-card--timeline";
+    card.textContent = event.title;
+    return card;
+  },
+  defaults: { palette: "cool", orientation: "vertical" },
+  constraints: { orientation: "vertical" },
+  overrides: { primary: "#2563eb", radius: "4px" },
+});
+
+// Use it like any built-in theme
+Already.init({ el: "#cal", theme: "timeline" });
+
+// Or combine with user overrides
+Already.init({ el: "#cal", theme: { layout: "timeline", palette: "dark" } });
+```
+
+The bundle's `layout` function is auto-registered so you don't need a separate `registerLayout()` call. Constraints are enforced — a user value that conflicts with a constraint throws (from `init()`) or logs via `console.error` (from `setConfig()`). User CSS overrides win over bundle overrides. `Already.THEMES` is a frozen snapshot of all registered bundles.
+
+See the [full custom theme bundle reference](docs/configuration.md#custom-themes) for all bundle keys, validation rules, and the priority chain.
+
 ## Link Extraction
 
 URLs in event descriptions matching known platforms are extracted and rendered as action buttons. The URL is removed from the description text.
