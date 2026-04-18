@@ -1,3 +1,4 @@
+import { decodeAmp } from "./html-entities.js";
 import { cleanupHtml, stripUrl, URL_PATTERN } from "./sanitize.js";
 import { normalizeUrl } from "./tokens.js";
 
@@ -265,7 +266,7 @@ export function extractLinks(description, config) {
 /** Extract platform link tokens from description for deduplication via TokenSet. */
 export function extractLinkTokens(description, config) {
   if (!description) return { tokens: [], description };
-  description = description.replace(/&amp;/g, "&");
+  description = decodeAmp(description);
   const platforms = config?.knownPlatforms || DEFAULT_PLATFORMS;
   const tokens = [];
   let cleaned = description;

@@ -1,3 +1,4 @@
+import { decodeAmp } from "./html-entities.js";
 import { cleanupHtml, stripUrl } from "./sanitize.js";
 import { normalizeUrl } from "./tokens.js";
 
@@ -126,7 +127,7 @@ function imageCanonicalId(originalUrl) {
 /** Extract image tokens from description text (by extension, Drive URLs, and Dropbox URLs). */
 export function extractImageTokens(description, config) {
   if (!description) return { tokens: [], description };
-  description = description.replace(/&amp;/g, "&");
+  description = decodeAmp(description);
   const extensions = config?.imageExtensions || DEFAULT_IMAGE_EXTENSIONS;
   const pattern = buildImagePattern(extensions);
   const seen = new Set();

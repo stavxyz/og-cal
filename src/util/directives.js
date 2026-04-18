@@ -1,3 +1,4 @@
+import { decodeAmp } from "./html-entities.js";
 import { imageCanonicalId, normalizeImageUrl } from "./images.js";
 import { cleanupHtml, stripUrl } from "./sanitize.js";
 
@@ -196,7 +197,7 @@ function parseDirective(body) {
 export function extractDirectives(description) {
   if (!description)
     return { tokens: [], description, featured: false, hidden: false };
-  description = description.replace(/&amp;/g, "&");
+  description = decodeAmp(description);
 
   const tokens = [];
   const seen = new Set();
