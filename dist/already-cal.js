@@ -362,6 +362,16 @@ var Already = (() => {
     return map[type] || "Download File";
   }
 
+  // src/util/comments.js
+  var COMMENT_RE = /^[ \t]*\/\/ .*$\n?/gm;
+  function stripComments(description) {
+    if (!description) return "";
+    let text = description.replace(/&amp;/g, "&");
+    text = text.replace(COMMENT_RE, "");
+    text = text.replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "").replace(/\n+$/, "");
+    return text;
+  }
+
   // node_modules/marked/lib/marked.esm.js
   function _getDefaults() {
     return {
@@ -3083,6 +3093,7 @@ ${text}</tr>
     let featured = event.featured || false;
     let hidden = event.hidden || false;
     const tokenSet = new TokenSet();
+    description = stripComments(description);
     if (description) {
       const result = extractDirectives(description);
       description = result.description;
