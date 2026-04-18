@@ -38,6 +38,8 @@ Use comments to:
 - Requires a space after `//` — `//nospace` is NOT a comment
 - `// ` mid-line is NOT a comment — `visit us // open daily` renders as-is
 - URLs with `://` are never affected — `https://example.com` is safe
+- Protocol-relative URLs (`//example.com`) are preserved — no space after `//`
+- Lines are delimited by `\n` (or `\r\n`). HTML `<br>` is not a comment boundary — write comments on real newlines, not after `<br>` tags
 
 ## Directives
 
@@ -76,4 +78,4 @@ When already-cal processes a description, extractions run in this order:
 5. **Attachments** — file URLs extracted
 6. **Format detection** — HTML, markdown, or plain text
 
-All extractors decode `&amp;` to `&` before matching (Google Calendar HTML-encodes ampersands). Tokens from all stages share a `TokenSet` that enforces deduplication by canonical ID — a directive and a URL pointing to the same resource produce one entry.
+All stages decode `&amp;` to `&` before matching (Google Calendar HTML-encodes ampersands) via the shared `decodeAmp` helper. Stages 2–5 contribute to a shared `TokenSet` that enforces deduplication by canonical ID — a directive and a URL pointing to the same resource produce one entry. Comments (stage 1) are fully stripped and produce no tokens.
