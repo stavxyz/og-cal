@@ -1,3 +1,4 @@
+import { decodeAmp } from "./html-entities.js";
 import {
   DEFAULT_IMAGE_EXTENSIONS,
   DRIVE_ID_PATTERN,
@@ -75,7 +76,7 @@ function attachmentCanonicalId(url) {
 /** Extract file attachment tokens from description URLs. */
 export function extractAttachmentTokens(description, _config) {
   if (!description) return { tokens: [], description };
-  description = description.replace(/&amp;/g, "&");
+  description = decodeAmp(description);
 
   const tokens = [];
   let cleaned = description;
