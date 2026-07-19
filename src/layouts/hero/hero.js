@@ -1,4 +1,4 @@
-import { formatDateRange } from "../../util/dates.js";
+import { formatEventWhen } from "../../util/dates.js";
 import { renderDescription } from "../../util/description.js";
 import { createElement } from "../../views/helpers.js";
 import { buildCardClasses, createCardImage } from "../helpers.js";
@@ -40,9 +40,8 @@ export function render(event, options) {
   }
 
   const meta = createElement("span", "already-card__meta");
-  meta.textContent = formatDateRange(event.start, event.end, {
-    allDay: event.allDay,
-    timeZone: timezone,
+  meta.textContent = formatEventWhen(event, {
+    sourceZoneFallback: timezone,
     locale,
     dateStyle: "short",
   });
