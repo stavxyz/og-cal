@@ -58,6 +58,41 @@ describe("transformGoogleEvents", () => {
     const desc = mockGoogleResponse.items[0].description;
     assert.ok(/eventbrite\.com/.test(desc));
   });
+
+  it("preserves _sourceTimeZone from the raw item onto the transformed event", async () => {
+    const out = transformGoogleEvents(
+      {
+        summary: "Composite",
+        timeZone: "America/Chicago",
+        items: [
+          {
+            id: "evt-ny",
+            summary: "Client call",
+            start: { dateTime: "2026-07-15T15:00:00-04:00" },
+            end: { dateTime: "2026-07-15T16:00:00-04:00" },
+            _sourceTimeZone: "America/New_York",
+          },
+        ],
+      },
+      {},
+    );
+    assert.strictEqual(out.events[0]._sourceTimeZone, "America/New_York");
+  });
+  it("leaves _sourceTimeZone undefined when the raw item omits it", async () => {
+    const out = transformGoogleEvents(
+      {
+        items: [
+          {
+            id: "e",
+            summary: "x",
+            start: { dateTime: "2026-07-15T15:00:00Z" },
+          },
+        ],
+      },
+      {},
+    );
+    assert.strictEqual(out.events[0]._sourceTimeZone, undefined);
+  });
 });
 
 describe("transformGoogleEvents — field mapping", () => {
