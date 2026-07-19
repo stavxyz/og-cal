@@ -277,14 +277,27 @@ describe("formatEventWhen", () => {
   });
 
   it("falls back to sourceZoneFallback when the event has no _sourceTimeZone", () => {
-    const out = formatEventWhen(
-      {
-        start: "2026-07-15T15:00:00Z",
-        end: "2026-07-15T16:00:00Z",
-        allDay: false,
-      },
-      { sourceZoneFallback: "America/New_York", dateStyle: "short" },
-    );
-    assert.ok(out.length > 0);
+    // Pin the viewer zone to UTC for just this test so the assertion is
+    // deterministic across machines, without affecting the sibling
+    // "differs" test above, which relies on the real runtime viewer zone.
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "UTC";
+      const out = formatEventWhen(
+        {
+          start: "2026-07-15T15:00:00Z",
+          end: "2026-07-15T16:00:00Z",
+          allDay: false,
+        },
+        { sourceZoneFallback: "America/New_York", dateStyle: "short" },
+      );
+      // Viewer is UTC, source falls back to America/New_York (EDT in July),
+      // so the wall clocks differ and the source suffix must appear —
+      // proving sourceZoneFallback actually drove the output.
+      assert.match(out, / · /);
+      assert.match(out, /EDT/);
+    } finally {
+      process.env.TZ = origTZ;
+    }
   });
 });
