@@ -239,6 +239,7 @@ export function transformGoogleEvents(googleData, config) {
         htmlLink: item.htmlLink || "",
         attachments: apiAttachments,
         _imageAttachments: imageAttachments,
+        _sourceTimeZone: item._sourceTimeZone,
       },
       config,
     );
