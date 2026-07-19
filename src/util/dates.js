@@ -158,6 +158,48 @@ export function formatDateRange(start, end, opts = {}) {
   return raw.replace(/\s+/g, " ");
 }
 
+/**
+ * WIDGET event "when" label: primary time in the VIEWER's zone, with the event's
+ * SOURCE-calendar zone appended (" · 3:00 PM EDT") when the two differ. All-day
+ * events render in UTC with no suffix (absolute). Source zone = event._sourceTimeZone
+ * ?? opts.sourceZoneFallback ?? UTC. Keeps mixed-tz composite views correct: each
+ * event carries its own zone. Do NOT use for share/meta surfaces — those stay
+ * source-anchored (see already-cal.js setEventMeta).
+ *
+ * @param {object} event `{ start, end, allDay, _sourceTimeZone }`
+ * @param {object} [opts] `{ sourceZoneFallback, locale, dateStyle }`
+ * @returns {string}
+ */
+export function formatEventWhen(event, opts = {}) {
+  const { sourceZoneFallback, locale = "en-US", dateStyle = "short" } = opts;
+  const start = event.start;
+  const end = event.end;
+  if (!start) return "";
+
+  if (event.allDay || DATE_ONLY_RE.test(start)) {
+    return formatDateRange(start, end, { allDay: true, locale, dateStyle });
+  }
+
+  const viewer = viewerTimeZone();
+  const source = event._sourceTimeZone || sourceZoneFallback || "UTC";
+  const primary = formatDateRange(start, end, {
+    timeZone: viewer,
+    locale,
+    dateStyle,
+  });
+
+  if (source === viewer || !wallClockDiffers(start, source, viewer, locale)) {
+    return primary;
+  }
+  const sourceTime = formatDateRange(start, end, {
+    timeZone: source,
+    locale,
+    dateStyle: "time",
+  });
+  const abbrev = zoneAbbrev(start, source, locale);
+  return `${primary} · ${sourceTime}${abbrev ? ` ${abbrev}` : ""}`;
+}
+
 /** Return the number of days in a given month (1-indexed result). */
 export function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();

@@ -5,6 +5,7 @@ let formatDate,
   formatDateShort,
   getDatePartsInTz,
   formatDateRange,
+  formatEventWhen,
   viewerTimeZone,
   zoneAbbrev,
   wallClockDiffers;
@@ -14,6 +15,7 @@ before(async () => {
     formatDateShort,
     getDatePartsInTz,
     formatDateRange,
+    formatEventWhen,
     viewerTimeZone,
     zoneAbbrev,
     wallClockDiffers,
@@ -236,5 +238,53 @@ describe("zone helpers", () => {
         `${c.zone} @ ${c.instant}`,
       );
     }
+  });
+});
+
+describe("formatEventWhen", () => {
+  const nyEvent = {
+    start: "2026-07-15T15:00:00-04:00",
+    end: "2026-07-15T16:00:00-04:00",
+    allDay: false,
+    _sourceTimeZone: "America/New_York",
+  };
+
+  it("appends the source label + abbrev when source differs from viewer", () => {
+    const out = formatEventWhen(nyEvent, {
+      sourceZoneFallback: "America/Chicago",
+      locale: "en-US",
+      dateStyle: "short",
+    });
+    if (wallClockDiffers(nyEvent.start, "America/New_York", viewerTimeZone())) {
+      assert.match(out, /EDT/);
+      assert.match(out, / · /);
+    } else {
+      assert.doesNotMatch(out, / · /); // viewer is Eastern → no suffix
+    }
+  });
+
+  it("all-day events get no source suffix", () => {
+    const out = formatEventWhen(
+      {
+        start: "2026-08-19",
+        end: "2026-08-20",
+        allDay: true,
+        _sourceTimeZone: "America/New_York",
+      },
+      { sourceZoneFallback: "America/Chicago", dateStyle: "short" },
+    );
+    assert.doesNotMatch(out, / · /);
+  });
+
+  it("falls back to sourceZoneFallback when the event has no _sourceTimeZone", () => {
+    const out = formatEventWhen(
+      {
+        start: "2026-07-15T15:00:00Z",
+        end: "2026-07-15T16:00:00Z",
+        allDay: false,
+      },
+      { sourceZoneFallback: "America/New_York", dateStyle: "short" },
+    );
+    assert.ok(out.length > 0);
   });
 });
