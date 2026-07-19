@@ -1,10 +1,23 @@
 const { describe, it, before } = require("node:test");
 const assert = require("node:assert");
 
-let formatDate, formatDateShort, getDatePartsInTz, formatDateRange;
+let formatDate,
+  formatDateShort,
+  getDatePartsInTz,
+  formatDateRange,
+  viewerTimeZone,
+  zoneAbbrev,
+  wallClockDiffers;
 before(async () => {
-  ({ formatDate, formatDateShort, getDatePartsInTz, formatDateRange } =
-    await import("../../src/util/dates.js"));
+  ({
+    formatDate,
+    formatDateShort,
+    getDatePartsInTz,
+    formatDateRange,
+    viewerTimeZone,
+    zoneAbbrev,
+    wallClockDiffers,
+  } = await import("../../src/util/dates.js"));
 });
 
 describe("all-day (date-only) dates render on the entered calendar date regardless of timezone", () => {
@@ -168,5 +181,60 @@ describe("formatDateRange — smart-collapse event date ranges (Intl.formatRange
       }),
       "Mar 7, 2:00 PM – Mar 9, 1:00 PM",
     );
+  });
+});
+
+describe("zone helpers", () => {
+  it("viewerTimeZone returns a non-empty IANA string", () => {
+    const tz = viewerTimeZone();
+    assert.ok(typeof tz === "string" && tz.length > 0);
+  });
+  it("wallClockDiffers is true across different-offset zones, false for same zone", () => {
+    assert.strictEqual(
+      wallClockDiffers(
+        "2026-07-15T15:00:00Z",
+        "America/New_York",
+        "America/Chicago",
+      ),
+      true,
+    );
+    assert.strictEqual(
+      wallClockDiffers(
+        "2026-07-15T15:00:00Z",
+        "America/New_York",
+        "America/New_York",
+      ),
+      false,
+    );
+  });
+
+  // Same 4 rows as the worker repo's test/fixtures/zone-abbrev-parity.ts
+  // (ZONE_ABBREV_CASES). Kept in sync by convention — edit both together.
+  const ZONE_ABBREV_CASES = [
+    {
+      instant: "2026-07-15T15:00:00Z",
+      zone: "America/New_York",
+      abbrev: "EDT",
+    },
+    {
+      instant: "2026-01-15T15:00:00Z",
+      zone: "America/New_York",
+      abbrev: "EST",
+    },
+    {
+      instant: "2026-07-15T15:00:00Z",
+      zone: "America/Chicago",
+      abbrev: "CDT",
+    },
+    { instant: "2026-07-15T15:00:00Z", zone: "UTC", abbrev: "UTC" },
+  ];
+  it("zoneAbbrev matches the shared parity table under this runtime's Intl", () => {
+    for (const c of ZONE_ABBREV_CASES) {
+      assert.strictEqual(
+        zoneAbbrev(c.instant, c.zone),
+        c.abbrev,
+        `${c.zone} @ ${c.instant}`,
+      );
+    }
   });
 });
