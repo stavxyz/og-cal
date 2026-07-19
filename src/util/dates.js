@@ -11,6 +11,41 @@ function zoneFor(isoString, timezone) {
   return DATE_ONLY_RE.test(isoString) ? "UTC" : timezone;
 }
 
+/** The runtime viewer's IANA zone, or "UTC" if unresolvable. */
+export function viewerTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+/** Short zone name (e.g. "EDT", "UTC") for an instant in a zone. */
+export function zoneAbbrev(isoString, timeZone, locale) {
+  const parts = new Intl.DateTimeFormat(locale || "en-US", {
+    timeZone,
+    hour: "numeric",
+    timeZoneName: "short",
+  }).formatToParts(new Date(isoString));
+  const part = parts.find((p) => p.type === "timeZoneName");
+  return part ? part.value : "";
+}
+
+/** True when `isoString` shows a different hour:minute in the two zones. */
+export function wallClockDiffers(isoString, zoneA, zoneB, locale) {
+  const opts = { hour: "numeric", minute: "2-digit" };
+  const date = new Date(isoString);
+  const a = new Intl.DateTimeFormat(locale || "en-US", {
+    ...opts,
+    timeZone: zoneA,
+  }).format(date);
+  const b = new Intl.DateTimeFormat(locale || "en-US", {
+    ...opts,
+    timeZone: zoneB,
+  }).format(date);
+  return a !== b;
+}
+
 /**
  * Parse an event's `start`/`end` value into a Date for TEMPORAL logic ("which
  * day is it", "is it past"). The two-axis rule for date-only (all-day) values:
