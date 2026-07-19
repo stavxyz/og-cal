@@ -14,7 +14,7 @@ import {
 } from "./ui/sticky.js";
 import { createTagFilter } from "./ui/tag-filter.js";
 import { renderViewSelector } from "./ui/view-selector.js";
-import { formatDateRange, isPast } from "./util/dates.js";
+import { formatDateRange, isPast, zoneAbbrev } from "./util/dates.js";
 import {
   DEFAULT_ALLOWED_ATTRS,
   DEFAULT_ALLOWED_TAGS,
@@ -306,14 +306,19 @@ export function init(userConfig) {
   }
 
   function setEventMeta(event) {
-    const tz = data?.calendar?.timezone || "UTC";
+    const viewTz = data?.calendar?.timezone || "UTC";
+    const sourceTz = event._sourceTimeZone || viewTz; // source-anchored: share text must be stable + match server
     const dateStr = formatDateRange(event.start, event.end, {
       allDay: event.allDay,
-      timeZone: tz,
+      timeZone: sourceTz,
       locale: config.locale,
       dateStyle: "full",
     });
-    const descParts = [dateStr];
+    const abbrev = event.allDay
+      ? ""
+      : zoneAbbrev(event.start, sourceTz, config.locale);
+    const whenStr = abbrev ? `${dateStr} ${abbrev}` : dateStr;
+    const descParts = [whenStr];
     if (event.location) descParts.push(event.location);
 
     setMetaTag("og:title", event.title);

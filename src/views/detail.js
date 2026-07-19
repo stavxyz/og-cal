@@ -1,5 +1,5 @@
 import { createShareButton } from "../ui/share-button.js";
-import { formatDateRange } from "../util/dates.js";
+import { formatEventWhen } from "../util/dates.js";
 import { renderDescription } from "../util/description.js";
 import { buildShareUrl } from "../util/share-url.js";
 import { createElement } from "./helpers.js";
@@ -145,9 +145,8 @@ export function renderDetailView(container, event, timezone, onBack, config) {
   content.appendChild(titleEl);
 
   const meta = createElement("div", "already-detail-meta");
-  const dateStr = formatDateRange(event.start, event.end, {
-    allDay: event.allDay,
-    timeZone: timezone,
+  const dateStr = formatEventWhen(event, {
+    sourceZoneFallback: timezone,
     locale,
     dateStyle: "full",
   });
