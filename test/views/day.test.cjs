@@ -1,5 +1,5 @@
 require("../setup-dom.cjs");
-const { describe, it, before, beforeEach } = require("node:test");
+const { describe, it, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
 
@@ -8,6 +8,28 @@ let renderDayView;
 before(async () => {
   const mod = await import("../../src/views/day.js");
   renderDayView = mod.renderDayView;
+});
+
+// day.js renders event times via formatEventWhen, which formats in the
+// VIEWER's local zone (Intl.DateTimeFormat().resolvedOptions().timeZone,
+// driven by process.env.TZ) and appends a " · ... " source-zone suffix when
+// the viewer zone differs from the event's source zone. Pin the viewer zone
+// to UTC for these tests so the exact-string time assertions below are
+// deterministic across machines/CI regardless of the ambient TZ, and restore
+// the original value afterward to avoid leaking state into other test files.
+let originalTZ;
+
+before(() => {
+  originalTZ = process.env.TZ;
+  process.env.TZ = "UTC";
+});
+
+after(() => {
+  if (originalTZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = originalTZ;
+  }
 });
 
 beforeEach(() => {
