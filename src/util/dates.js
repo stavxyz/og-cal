@@ -20,6 +20,35 @@ export function viewerTimeZone() {
   }
 }
 
+/**
+ * Resolve an IANA zone that `Intl` will actually accept, trying `timeZone`
+ * then `fallback` and ending at "UTC".
+ *
+ * Every `Intl.DateTimeFormat` constructor throws a RangeError on an unknown
+ * zone, so a single malformed `_sourceTimeZone` in the upstream payload (a
+ * typo, a Windows zone id, a stale alias) would take down an entire render:
+ * the grid/list views isolate each card via `safeRenderCard`, but the day
+ * view, the detail view and `setEventMeta` have no such net. Normalising at
+ * the point of consumption keeps a bad zone a cosmetic problem — the event
+ * still renders, just anchored to the fallback.
+ *
+ * @param {string} [timeZone] preferred zone (e.g. `event._sourceTimeZone`)
+ * @param {string} [fallback] zone to use when `timeZone` is missing/invalid
+ * @returns {string} a zone `Intl` accepts
+ */
+export function resolveTimeZone(timeZone, fallback) {
+  for (const candidate of [timeZone, fallback]) {
+    if (!candidate) continue;
+    try {
+      new Intl.DateTimeFormat(undefined, { timeZone: candidate });
+      return candidate;
+    } catch {
+      // Not a zone this runtime's ICU knows — try the next candidate.
+    }
+  }
+  return "UTC";
+}
+
 /** Short zone name (e.g. "EDT", "UTC") for an instant in a zone. */
 export function zoneAbbrev(isoString, timeZone, locale) {
   const parts = new Intl.DateTimeFormat(locale || "en-US", {
@@ -162,7 +191,8 @@ export function formatDateRange(start, end, opts = {}) {
  * WIDGET event "when" label: primary time in the VIEWER's zone, with the event's
  * SOURCE-calendar zone appended (" · 3:00 PM EDT") when the two differ. All-day
  * events render in UTC with no suffix (absolute). Source zone = event._sourceTimeZone
- * ?? opts.sourceZoneFallback ?? UTC. Keeps mixed-tz composite views correct: each
+ * ?? opts.sourceZoneFallback ?? UTC, each candidate validated by `resolveTimeZone`
+ * so a malformed zone degrades instead of throwing. Keeps mixed-tz composite views correct: each
  * event carries its own zone. Do NOT use for share/meta surfaces — those stay
  * source-anchored (see already-cal.js setEventMeta).
  *
@@ -181,7 +211,9 @@ export function formatEventWhen(event, opts = {}) {
   }
 
   const viewer = viewerTimeZone();
-  const source = event._sourceTimeZone || sourceZoneFallback || "UTC";
+  // Normalise before ANY Intl call: an unknown zone would otherwise throw a
+  // RangeError out of this function and blank the whole view (see resolveTimeZone).
+  const source = resolveTimeZone(event._sourceTimeZone, sourceZoneFallback);
   const primary = formatDateRange(start, end, {
     timeZone: viewer,
     locale,
