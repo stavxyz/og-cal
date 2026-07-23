@@ -8,7 +8,8 @@ let formatDate,
   formatEventWhen,
   viewerTimeZone,
   zoneAbbrev,
-  wallClockDiffers;
+  wallClockDiffers,
+  resolveTimeZone;
 before(async () => {
   ({
     formatDate,
@@ -19,6 +20,7 @@ before(async () => {
     viewerTimeZone,
     zoneAbbrev,
     wallClockDiffers,
+    resolveTimeZone,
   } = await import("../../src/util/dates.js"));
 });
 
@@ -299,5 +301,92 @@ describe("formatEventWhen", () => {
     } finally {
       process.env.TZ = origTZ;
     }
+  });
+
+  it("degrades instead of throwing on a malformed _sourceTimeZone", () => {
+    // Regression: Intl.DateTimeFormat throws a RangeError on an unknown zone.
+    // The day view, the detail view and setEventMeta all render OUTSIDE
+    // safeRenderCard's per-card isolation, so one bad zone in the payload used
+    // to take down the entire view. resolveTimeZone normalises it away.
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "UTC";
+      const event = {
+        start: "2026-07-15T15:00:00Z",
+        end: "2026-07-15T16:00:00Z",
+        allDay: false,
+        _sourceTimeZone: "Not/AZone",
+      };
+      let out;
+      assert.doesNotThrow(() => {
+        out = formatEventWhen(event, {
+          sourceZoneFallback: "America/New_York",
+          dateStyle: "short",
+        });
+      });
+      // Falls back to sourceZoneFallback (EDT in July), which differs from the
+      // pinned UTC viewer zone — so the suffix still renders, just anchored to
+      // the fallback rather than the unusable zone.
+      assert.match(out, /Jul 15/);
+      assert.match(out, / · /);
+      assert.match(out, /EDT/);
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+
+  it("falls back all the way to UTC when both zones are malformed", () => {
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "America/New_York";
+      let out;
+      assert.doesNotThrow(() => {
+        out = formatEventWhen(
+          {
+            start: "2026-07-15T15:00:00Z",
+            end: "2026-07-15T16:00:00Z",
+            allDay: false,
+            _sourceTimeZone: "Not/AZone",
+          },
+          { sourceZoneFallback: "Also/Bogus", dateStyle: "short" },
+        );
+      });
+      // Viewer is Eastern, source degrades to UTC → wall clocks differ → the
+      // suffix renders the UTC time rather than blowing up.
+      assert.match(out, / · /);
+      assert.match(out, /UTC/);
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+});
+
+describe("resolveTimeZone", () => {
+  it("returns a valid zone unchanged", () => {
+    assert.strictEqual(
+      resolveTimeZone("America/New_York", "UTC"),
+      "America/New_York",
+    );
+  });
+
+  it("falls back when the preferred zone is malformed", () => {
+    assert.strictEqual(
+      resolveTimeZone("Not/AZone", "America/Chicago"),
+      "America/Chicago",
+    );
+  });
+
+  it("falls back when the preferred zone is missing", () => {
+    assert.strictEqual(
+      resolveTimeZone(undefined, "Europe/Paris"),
+      "Europe/Paris",
+    );
+  });
+
+  it("ends at UTC when nothing is usable", () => {
+    assert.strictEqual(resolveTimeZone("Not/AZone", "Also/Bogus"), "UTC");
+    assert.strictEqual(resolveTimeZone(), "UTC");
   });
 });

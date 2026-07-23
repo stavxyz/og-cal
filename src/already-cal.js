@@ -14,7 +14,12 @@ import {
 } from "./ui/sticky.js";
 import { createTagFilter } from "./ui/tag-filter.js";
 import { renderViewSelector } from "./ui/view-selector.js";
-import { formatDateRange, isPast, zoneAbbrev } from "./util/dates.js";
+import {
+  formatDateRange,
+  isPast,
+  resolveTimeZone,
+  zoneAbbrev,
+} from "./util/dates.js";
 import {
   DEFAULT_ALLOWED_ATTRS,
   DEFAULT_ALLOWED_TAGS,
@@ -307,7 +312,10 @@ export function init(userConfig) {
 
   function setEventMeta(event) {
     const viewTz = data?.calendar?.timezone || "UTC";
-    const sourceTz = event._sourceTimeZone || viewTz; // source-anchored: share text must be stable + match server
+    // source-anchored: share text must be stable + match the server-rendered
+    // card. resolveTimeZone keeps a malformed _sourceTimeZone from throwing a
+    // RangeError here, which would block entry into the detail view entirely.
+    const sourceTz = resolveTimeZone(event._sourceTimeZone, viewTz);
     const dateStr = formatDateRange(event.start, event.end, {
       allDay: event.allDay,
       timeZone: sourceTz,
