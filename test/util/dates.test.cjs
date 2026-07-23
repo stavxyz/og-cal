@@ -76,6 +76,51 @@ describe("all-day (date-only) dates render on the entered calendar date regardle
   });
 });
 
+describe("formatDate/formatDateShort — malformed calendar-level timezone guard", () => {
+  // Regression: `data.calendar.timezone` (from the worker's googleData.timeZone)
+  // reaches these two exported formatters directly — e.g. day.js's nav title
+  // and week.js's range labels — with no per-event normalisation in front of
+  // it. Intl.DateTimeFormat throws a RangeError on an unknown zone, which used
+  // to take the whole view down. Both formatters must run the zone through
+  // resolveTimeZone (same helper formatEventWhen already uses) and degrade to
+  // UTC instead of throwing.
+  it("formatDate does not throw on a malformed zone and falls back to UTC", () => {
+    let out;
+    assert.doesNotThrow(() => {
+      out = formatDate("2026-07-15T15:00:00Z", "Not/AZone");
+    });
+    assert.strictEqual(out, "Wednesday, July 15, 2026");
+  });
+
+  it("formatDateShort does not throw on a malformed zone and falls back to UTC", () => {
+    let out;
+    assert.doesNotThrow(() => {
+      out = formatDateShort("2026-07-15T15:00:00Z", "Not/AZone");
+    });
+    assert.strictEqual(out, "Jul 15");
+  });
+
+  it("all-day (date-only) values stay UTC-anchored even with a malformed zone", () => {
+    // zoneFor forces UTC for date-only values regardless of the timezone
+    // argument — the malformed-zone guard must not disturb that.
+    assert.strictEqual(
+      formatDate("2026-08-19", "Not/AZone"),
+      "Wednesday, August 19, 2026",
+    );
+  });
+
+  it("still honors a valid timezone unchanged (no behavior change)", () => {
+    assert.strictEqual(
+      formatDate("2026-07-15T15:00:00Z", "America/Chicago"),
+      "Wednesday, July 15, 2026",
+    );
+    assert.strictEqual(
+      formatDateShort("2026-07-15T15:00:00Z", "America/Chicago"),
+      "Jul 15",
+    );
+  });
+});
+
 describe("formatDateRange — smart-collapse event date ranges (Intl.formatRange)", () => {
   const CT = "America/Chicago"; // UTC-5 in July (CDT)
 
