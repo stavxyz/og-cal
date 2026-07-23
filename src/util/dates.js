@@ -223,7 +223,13 @@ export function formatEventWhen(event, opts = {}) {
   if (source === viewer || !wallClockDiffers(start, source, viewer, locale)) {
     return primary;
   }
-  const sourceTime = formatDateRange(start, end, {
+  // START ONLY — deliberately no `end`. The suffix is an at-a-glance "and that
+  // is N o'clock where the event actually is", not a second full range. Passing
+  // a multi-day `end` with dateStyle:"time" makes formatRange inject numeric
+  // M/D/YYYY dates to disambiguate the endpoints ("7/15/2026, 3:00 PM –
+  // 7/16/2026, …"), which clashes with the widget's house style and overflows
+  // narrow columns — the same trap day.js sidesteps by reshaping `end`.
+  const sourceTime = formatDateRange(start, undefined, {
     timeZone: source,
     locale,
     dateStyle: "time",
