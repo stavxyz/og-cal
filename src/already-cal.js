@@ -311,11 +311,15 @@ export function init(userConfig) {
   }
 
   function setEventMeta(event) {
-    const viewTz = data?.calendar?.timezone || "UTC";
-    // source-anchored: share text must be stable + match the server-rendered
-    // card. resolveTimeZone keeps a malformed _sourceTimeZone from throwing a
+    // The MERGED CALENDAR's zone — not the viewer's. og:/twitter: text is
+    // deliberately source-anchored (see formatEventWhen's "do NOT use for
+    // share/meta surfaces" note) so the client-side card matches the one the
+    // worker renders server-side; naming it after the viewer would invite a
+    // future refactor to swap in viewerTimeZone() and silently break that.
+    const calendarTz = data?.calendar?.timezone || "UTC";
+    // resolveTimeZone keeps a malformed _sourceTimeZone from throwing a
     // RangeError here, which would block entry into the detail view entirely.
-    const sourceTz = resolveTimeZone(event._sourceTimeZone, viewTz);
+    const sourceTz = resolveTimeZone(event._sourceTimeZone, calendarTz);
     const dateStr = formatDateRange(event.start, event.end, {
       allDay: event.allDay,
       timeZone: sourceTz,
