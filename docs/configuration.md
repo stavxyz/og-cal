@@ -409,6 +409,8 @@ Custom themes can be re-registered (replacing the previous bundle). Built-in the
 
 Register custom card layouts via `Already.registerLayout(name, renderFn)`. The render function receives an event object and an options object, and must return an `HTMLElement`.
 
+> **Note:** Built-in layouts (`clean`, `hero`, `badge`, `compact`) render event times in the viewer's local zone, appending the event's source-calendar zone when it differs, via the internal `formatEventWhen` helper — they do not use `options.timezone` for this. A custom layout that formats times with `options.timezone` directly renders in the calendar/source-zone fallback instead, and will look inconsistent with built-in layouts.
+
 ```js
 Already.registerLayout('timeline', (event, options) => {
   const card = document.createElement('div');
@@ -449,7 +451,7 @@ Already.init({
 | `orientation` | `string` | `"vertical"` or `"horizontal"`. In list view, defaults to `"horizontal"` regardless of theme setting (except for compact layout). |
 | `imagePosition` | `string` | `"left"`, `"right"`, or `"alternating"` |
 | `index` | `number` | Zero-based index of this event in the current view |
-| `timezone` | `string` | Calendar timezone (e.g. `"America/Chicago"`) |
+| `timezone` | `string` | Calendar/source-zone fallback (`calendar.timezone`), e.g. `"America/Chicago"`. Built-in layouts render viewer-local instead — see the note above. |
 | `locale` | `string` | Locale string (e.g. `"en-US"`) |
 | `config` | `object` | Full config object |
 

@@ -175,7 +175,7 @@ Constraint violations (e.g., passing `orientation: "horizontal"` to a theme that
 `src/layouts/registry.js` initializes the `"layout"` registry type and registers the four built-in layouts. It exports `getLayout(name)` which returns `clean` as fallback for unknown names.
 
 - Built-in layouts: `clean`, `hero`, `badge`, `compact` — each in `src/layouts/{name}/{name}.js`
-- Each layout module exports a render function: `(event, options) => HTMLElement` where `options` includes `orientation`, `imagePosition`, `index`, `timezone`, `locale`, and `config`
+- Each layout module exports a render function: `(event, options) => HTMLElement` where `options` includes `orientation`, `imagePosition`, `index`, `timezone`, `locale`, and `config`. `options.timezone` is the calendar/source-zone fallback (`data.calendar.timezone`) — built-in layouts render event times in the viewer's local zone (with a source-zone suffix when it differs) via `formatEventWhen`, not `options.timezone` directly.
 - Custom layouts are registered via `Already.registerLayout(name, renderFn)` which delegates to `register("layout", name, renderFn)`
 - Built-in names are protected — attempting to register a custom layout with a built-in name throws an error
 
