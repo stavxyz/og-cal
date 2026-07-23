@@ -252,16 +252,46 @@ describe("formatEventWhen", () => {
   };
 
   it("appends the source label + abbrev when source differs from viewer", () => {
-    const out = formatEventWhen(nyEvent, {
-      sourceZoneFallback: "America/Chicago",
-      locale: "en-US",
-      dateStyle: "short",
-    });
-    if (wallClockDiffers(nyEvent.start, "America/New_York", viewerTimeZone())) {
-      assert.match(out, /EDT/);
-      assert.match(out, / · /);
-    } else {
-      assert.doesNotMatch(out, / · /); // viewer is Eastern → no suffix
+    // Pin the viewer zone rather than branching on the live one: a runtime
+    // `if (wallClockDiffers(...))` meant this test quietly stopped exercising
+    // the suffix branch — the whole point of it — for anyone running in
+    // Eastern time, and asserted nothing but the absence of a middot.
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "America/Chicago";
+      const out = formatEventWhen(nyEvent, {
+        sourceZoneFallback: "UTC", // must LOSE to the event's _sourceTimeZone
+        locale: "en-US",
+        dateStyle: "short",
+      });
+      // Viewer is Central (2:00 PM), source is the event's own Eastern zone.
+      assert.match(out, / · /, out);
+      assert.strictEqual(out, "Jul 15, 2:00 – 3:00 PM · 3:00 PM EDT");
+      // The fallback would have produced a UTC suffix; _sourceTimeZone wins.
+      assert.doesNotMatch(out, /UTC/, out);
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+
+  it("omits the source suffix when the viewer already sees the source wall clock", () => {
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "America/New_York";
+      const out = formatEventWhen(nyEvent, {
+        sourceZoneFallback: "America/Chicago",
+        locale: "en-US",
+        dateStyle: "short",
+      });
+      assert.doesNotMatch(out, / · /, out); // viewer is Eastern → no suffix
+      assert.strictEqual(
+        wallClockDiffers(nyEvent.start, "America/New_York", viewerTimeZone()),
+        false,
+      );
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
     }
   });
 
