@@ -15,7 +15,7 @@ export function renderGridView(container, events, timezone, config) {
   const theme = config._theme || THEME_DEFAULTS;
 
   events = filterHidden(events);
-  events = sortFeaturedByDate(events, timezone, locale);
+  events = sortFeaturedByDate(events, locale);
 
   const grid = createElement("div", "already-grid");
   const renderCard = getLayout(theme.layout);

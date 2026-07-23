@@ -1,7 +1,23 @@
+// Week columns are keyed by the VIEWER's day (see getEventDateParts), so the
+// ambient TZ decides which column a timed event lands in. Pin it here — and pin
+// it BEFORE anything else in this file, because the `new Date(2026, 3, 15)`
+// literal in the describe body below is evaluated at load time, so a `before`
+// hook would leave it anchored to whatever zone the runner started with.
+const originalTZ = process.env.TZ;
+process.env.TZ = "America/Chicago";
+
 require("../setup-dom.cjs");
-const { describe, it, before, beforeEach } = require("node:test");
+const { describe, it, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
+
+after(() => {
+  if (originalTZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = originalTZ;
+  }
+});
 
 let renderWeekView;
 
@@ -88,6 +104,46 @@ describe("renderWeekView", () => {
     ];
     renderWeekView(container, events, "UTC", wednesday, {});
     assert.ok(container.querySelector(".already-week-event--featured"));
+  });
+
+  // Week starts Sunday Apr 12, 2026 → column 3 is Wed Apr 15, column 4 Thu Apr 16.
+  it("places a timed event in the VIEWER's column, not the calendar's", () => {
+    // 02:00 UTC Apr 16 is 21:00 CDT Apr 15; the merged-calendar zone is UTC.
+    const container = document.createElement("div");
+    const events = [
+      createTestEvent({ title: "Late Show", start: "2026-04-16T02:00:00Z" }),
+    ];
+    renderWeekView(container, events, "UTC", wednesday, {});
+    const cols = container.querySelectorAll(".already-week-col");
+    assert.strictEqual(
+      cols[3].querySelector(".already-week-event")?.textContent,
+      "Late Show",
+      "expected the block in the Wed Apr 15 column (viewer-local day)",
+    );
+    assert.strictEqual(
+      cols[4].querySelector(".already-week-event"),
+      null,
+      "Thu Apr 16 column must be empty",
+    );
+  });
+
+  it("keeps all-day events on their entered date (absolute placement)", () => {
+    const container = document.createElement("div");
+    const events = [
+      createTestEvent({
+        title: "Street Fair",
+        start: "2026-04-16",
+        end: "2026-04-17",
+        allDay: true,
+      }),
+    ];
+    renderWeekView(container, events, "UTC", wednesday, {});
+    const cols = container.querySelectorAll(".already-week-col");
+    assert.strictEqual(
+      cols[4].querySelector(".already-week-event")?.textContent,
+      "Street Fair",
+      "all-day event must stay in the Apr 16 column",
+    );
   });
 
   it("sorts featured first within a day column", () => {

@@ -18,7 +18,7 @@ export function render(event, options) {
   const imageEl = createCardImage(event);
   if (imageEl) {
     imageEl.classList.add("already-card__image--badged");
-    const badge = buildBadge(event.start, timezone, locale);
+    const badge = buildBadge(event.start, locale);
     imageEl.appendChild(badge);
     card.appendChild(imageEl);
   }
@@ -28,7 +28,7 @@ export function render(event, options) {
 
   // Badge inline if no image
   if (!event.image) {
-    const badge = buildBadge(event.start, timezone, locale);
+    const badge = buildBadge(event.start, locale);
     badge.classList.add("already-card__badge--inline");
     body.appendChild(badge);
   }

@@ -1,5 +1,5 @@
 require("../setup-dom.cjs");
-const { describe, it, before, beforeEach } = require("node:test");
+const { describe, it, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
 
@@ -12,6 +12,26 @@ before(async () => {
 
 beforeEach(() => {
   window.location.hash = "";
+});
+
+// Card/date grouping is now keyed by the VIEWER's zone (see getEventDateParts),
+// so the ambient TZ decides which date bucket an event falls in. Pin it to UTC
+// — the zone these fixtures are written against — so the assertions below are
+// deterministic on every machine and in CI, and restore it afterward so no
+// state leaks into other test files.
+let originalTZ;
+
+before(() => {
+  originalTZ = process.env.TZ;
+  process.env.TZ = "UTC";
+});
+
+after(() => {
+  if (originalTZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = originalTZ;
+  }
 });
 
 describe("renderGridView", () => {
