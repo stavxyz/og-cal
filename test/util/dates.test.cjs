@@ -278,6 +278,65 @@ describe("formatEventWhen", () => {
     assert.doesNotMatch(out, / · /);
   });
 
+  it("renders the source suffix as a single start time (single-day)", () => {
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "UTC";
+      const out = formatEventWhen(
+        {
+          start: "2026-07-15T19:00:00Z",
+          end: "2026-07-15T21:00:00Z",
+          allDay: false,
+          _sourceTimeZone: "America/New_York",
+        },
+        { dateStyle: "short" },
+      );
+      // Primary is the viewer-local range (no abbrev); the suffix is ONE
+      // source-zone time + abbrev, per the spec form "8:00 PM · 3:00 PM EDT".
+      assert.strictEqual(out, "Jul 15, 7:00 – 9:00 PM · 3:00 PM EDT");
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+
+  it("keeps numeric dates out of the source suffix for a multi-day span", () => {
+    // Regression: the suffix used to pass the event's full `end` with
+    // dateStyle:"time". For a span crossing midnight ICU disambiguates the two
+    // endpoints by injecting numeric dates — "7/15/2026, 3:00 PM – 7/16/2026,
+    // 11:00 PM" — which violates the widget's house style. The suffix must be
+    // the source-zone START time only.
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "UTC";
+      const out = formatEventWhen(
+        {
+          start: "2026-07-15T19:00:00Z",
+          end: "2026-07-17T03:00:00Z",
+          allDay: false,
+          _sourceTimeZone: "America/New_York",
+        },
+        { dateStyle: "short" },
+      );
+      const suffix = out.split(" · ")[1];
+      assert.ok(suffix, `expected a source suffix, got: ${out}`);
+      assert.doesNotMatch(
+        suffix,
+        /\d+\/\d+/,
+        `suffix must not contain a numeric date, got: ${suffix}`,
+      );
+      assert.strictEqual(suffix, "3:00 PM EDT");
+      // The primary half still shows the full viewer-local multi-day range.
+      assert.strictEqual(
+        out.split(" · ")[0],
+        "Jul 15, 7:00 PM – Jul 17, 3:00 AM",
+      );
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+
   it("falls back to sourceZoneFallback when the event has no _sourceTimeZone", () => {
     // Pin the viewer zone to UTC for just this test so the assertion is
     // deterministic across machines, without affecting the sibling
