@@ -369,8 +369,10 @@ describe("formatEventWhen", () => {
 
   it("falls back to sourceZoneFallback when the event has no _sourceTimeZone", () => {
     // Pin the viewer zone to UTC for just this test so the assertion is
-    // deterministic across machines, without affecting the sibling
-    // "differs" test above, which relies on the real runtime viewer zone.
+    // deterministic across machines, and restore it afterward. Restoring must
+    // branch on `undefined`: `process.env.TZ = undefined` writes the literal
+    // string "undefined", which leaves every later Intl call in this process
+    // resolving to an unset/UTC zone rather than the runner's real zone.
     const origTZ = process.env.TZ;
     try {
       process.env.TZ = "UTC";
@@ -388,7 +390,8 @@ describe("formatEventWhen", () => {
       assert.match(out, / · /);
       assert.match(out, /EDT/);
     } finally {
-      process.env.TZ = origTZ;
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
     }
   });
 
