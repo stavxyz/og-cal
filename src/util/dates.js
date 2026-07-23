@@ -92,11 +92,14 @@ export function parseEventDate(value) {
     : new Date(value);
 }
 
-/** Format an ISO date string as a full date (e.g. "Monday, April 14, 2026"). */
+/** Format an ISO date string as a full date (e.g. "Monday, April 14, 2026").
+ *  `timezone` is run through `resolveTimeZone` so a malformed calendar-level
+ *  zone (e.g. `data.calendar.timezone`) degrades to UTC instead of throwing a
+ *  RangeError out of nav/title renders (see day.js). */
 export function formatDate(isoString, timezone, locale) {
   locale = locale || "en-US";
   return new Intl.DateTimeFormat(locale, {
-    timeZone: zoneFor(isoString, timezone),
+    timeZone: zoneFor(isoString, resolveTimeZone(timezone)),
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -104,11 +107,12 @@ export function formatDate(isoString, timezone, locale) {
   }).format(new Date(isoString));
 }
 
-/** Format an ISO date string as a short date (e.g. "Apr 14"). */
+/** Format an ISO date string as a short date (e.g. "Apr 14"). Zone is
+ *  validated via `resolveTimeZone` — see `formatDate`. */
 export function formatDateShort(isoString, timezone, locale) {
   locale = locale || "en-US";
   return new Intl.DateTimeFormat(locale, {
-    timeZone: zoneFor(isoString, timezone),
+    timeZone: zoneFor(isoString, resolveTimeZone(timezone)),
     month: "short",
     day: "numeric",
   }).format(new Date(isoString));
