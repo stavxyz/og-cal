@@ -1,5 +1,5 @@
 require("../setup-dom.cjs");
-const { describe, it, before } = require("node:test");
+const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
 
@@ -8,6 +8,27 @@ let render;
 before(async () => {
   const mod = await import("../../src/layouts/compact/compact.js");
   render = mod.render;
+});
+
+// These fixtures use fixed ISO instants and the card's date surfaces (the meta
+// line via formatEventWhen, the badge via getEventDateParts) are rendered in
+// the VIEWER's zone. Loose "includes Apr" style assertions only survive on an
+// arbitrary machine because the fixtures happen to sit mid-month; pin the
+// viewer zone so the structure is deterministic everywhere, and restore it
+// afterward so no state leaks into other test files.
+let originalTZ;
+
+before(() => {
+  originalTZ = process.env.TZ;
+  process.env.TZ = "UTC";
+});
+
+after(() => {
+  if (originalTZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = originalTZ;
+  }
 });
 
 const baseOptions = {
