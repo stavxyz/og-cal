@@ -301,6 +301,28 @@ export function getDatePartsInTz(isoString, timezone, locale) {
   return parts;
 }
 
+/**
+ * Date parts for EVENT PLACEMENT — which month cell / week column / date group
+ * an event files under, and which day its card badge shows.
+ *
+ * Timed events bucket by the VIEWER's zone so the day an event lands on agrees
+ * with the viewer-local time `formatEventWhen` prints on it; before this, a
+ * merged multi-calendar feed placed events by the FIRST calendar's zone while
+ * labelling them viewer-local, so a late-evening event could sit in one day's
+ * cell showing the next day's time. (The day view already bucketed viewer-local
+ * via `isSameDay(parseEventDate(...))`; this brings the rest in line.)
+ *
+ * All-day (date-only) values stay ABSOLUTE — `getDatePartsInTz` routes them
+ * through `zoneFor` → UTC — so they never shift a day. Passing the viewer zone
+ * here does not change that.
+ *
+ * @param {string} isoString event start ("2026-07-15T20:00:00Z" or "2026-07-15")
+ * @param {string} [locale="en-US"]
+ */
+export function getEventDateParts(isoString, locale) {
+  return getDatePartsInTz(isoString, viewerTimeZone(), locale);
+}
+
 export const MONTH_NAMES_SHORT = [
   "JAN",
   "FEB",

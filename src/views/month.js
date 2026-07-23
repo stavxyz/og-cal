@@ -1,7 +1,7 @@
 import {
-  getDatePartsInTz,
   getDayNames,
   getDaysInMonth,
+  getEventDateParts,
   getFirstDayOfMonth,
   getMonthName,
   isToday,
@@ -37,10 +37,12 @@ export function renderMonthView(
   const monthName = getMonthName(year, month, locale);
   const dayNames = getDayNames(locale, weekStartDay);
 
-  // Group events by date in the calendar's timezone
+  // Group events by date in the VIEWER's timezone (all-day values stay
+  // absolute) so a chip sits in the same day cell as the viewer-local time the
+  // event renders elsewhere — see getEventDateParts.
   const eventsByDate = {};
   for (const event of events) {
-    const parts = getDatePartsInTz(event.start, timezone, locale);
+    const parts = getEventDateParts(event.start, locale);
     const key = `${parts.year}-${parts.month}-${parts.day}`;
     if (!eventsByDate[key]) eventsByDate[key] = [];
     eventsByDate[key].push(event);

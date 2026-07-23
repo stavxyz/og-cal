@@ -1,6 +1,6 @@
 import {
   formatDateShort,
-  getDatePartsInTz,
+  getEventDateParts,
   getWeekDates,
   isToday,
 } from "../util/dates.js";
@@ -82,9 +82,12 @@ export function renderWeekView(
     header.appendChild(dayNumEl);
     col.appendChild(header);
 
+    // Columns are keyed by the VIEWER's day (all-day values stay absolute) so
+    // an event's column matches the viewer-local time on its card — see
+    // getEventDateParts.
     const dayEvents = sortFeatured(
       events.filter((e) => {
-        const parts = getDatePartsInTz(e.start, timezone, locale);
+        const parts = getEventDateParts(e.start, locale);
         return (
           parts.year === date.getFullYear() &&
           parts.month === date.getMonth() &&

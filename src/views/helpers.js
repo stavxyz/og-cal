@@ -1,5 +1,5 @@
 import { setEventDetail } from "../router.js";
-import { getDatePartsInTz, isPast } from "../util/dates.js";
+import { getEventDateParts, isPast } from "../util/dates.js";
 
 /** Create a DOM element with optional class name and attributes. */
 export function createElement(tag, className, attrs) {
@@ -74,10 +74,14 @@ export function sortFeatured(events) {
   );
 }
 
-/** Sort events so featured events come first within each date group. */
-export function sortFeaturedByDate(events, timezone, locale) {
+/**
+ * Sort events so featured events come first within each date group. Groups are
+ * keyed by the VIEWER's day (all-day values stay absolute) to match the
+ * viewer-local time shown on each card — see getEventDateParts.
+ */
+export function sortFeaturedByDate(events, locale) {
   const dateKey = (e) => {
-    const p = getDatePartsInTz(e.start, timezone, locale);
+    const p = getEventDateParts(e.start, locale);
     return `${p.year}-${p.month}-${p.day}`;
   };
   // Group by date preserving original order, sort featured first within each group

@@ -1,4 +1,4 @@
-import { getDatePartsInTz, MONTH_NAMES_SHORT } from "../util/dates.js";
+import { getEventDateParts, MONTH_NAMES_SHORT } from "../util/dates.js";
 import { createElement } from "../views/helpers.js";
 
 /**
@@ -68,9 +68,13 @@ export function createCardImage(event) {
 /**
  * Build a date badge element (day number + short month).
  * Used by badge and compact layouts.
+ *
+ * The badge shows the VIEWER's day (all-day values stay absolute) so it agrees
+ * with the viewer-local time printed in the card's meta line — see
+ * getEventDateParts.
  */
-export function buildBadge(isoString, timezone, locale) {
-  const dateParts = getDatePartsInTz(isoString, timezone, locale);
+export function buildBadge(isoString, locale) {
+  const dateParts = getEventDateParts(isoString, locale);
   const badge = createElement("div", "already-card__badge");
   const day = createElement("div", "already-card__badge-day");
   day.textContent = dateParts.day;
