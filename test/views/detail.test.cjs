@@ -1,5 +1,5 @@
 require("../setup-dom.cjs");
-const { describe, it, before, afterEach } = require("node:test");
+const { describe, it, before, after, afterEach } = require("node:test");
 const assert = require("node:assert");
 const { createTestEvent } = require("../helpers.cjs");
 
@@ -8,6 +8,26 @@ let renderDetailView;
 before(async () => {
   const mod = await import("../../src/views/detail.js");
   renderDetailView = mod.renderDetailView;
+});
+
+// The detail view renders .already-detail-date through formatEventWhen, which
+// formats in the VIEWER's zone and may append a " · ... " source suffix. These
+// fixtures are fixed ISO instants, so the rendered text moves with the ambient
+// TZ; pin the viewer zone so the assertions below are deterministic everywhere,
+// and restore it afterward so no state leaks into other test files.
+let originalTZ;
+
+before(() => {
+  originalTZ = process.env.TZ;
+  process.env.TZ = "UTC";
+});
+
+after(() => {
+  if (originalTZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = originalTZ;
+  }
 });
 
 afterEach(() => {
