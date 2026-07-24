@@ -3314,7 +3314,8 @@ ${text}</tr>
           links: [],
           htmlLink: item.htmlLink || "",
           attachments: apiAttachments,
-          _imageAttachments: imageAttachments
+          _imageAttachments: imageAttachments,
+          _sourceTimeZone: item._sourceTimeZone
         },
         config
       );
@@ -3454,13 +3455,53 @@ ${text}</tr>
   function zoneFor(isoString, timezone) {
     return DATE_ONLY_RE.test(isoString) ? "UTC" : timezone;
   }
+  function viewerTimeZone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }
+  function resolveTimeZone(timeZone, fallback) {
+    for (const candidate of [timeZone, fallback]) {
+      if (!candidate) continue;
+      try {
+        new Intl.DateTimeFormat(void 0, { timeZone: candidate });
+        return candidate;
+      } catch {
+      }
+    }
+    return "UTC";
+  }
+  function zoneAbbrev(isoString, timeZone, locale) {
+    const parts = new Intl.DateTimeFormat(locale || "en-US", {
+      timeZone,
+      hour: "numeric",
+      timeZoneName: "short"
+    }).formatToParts(new Date(isoString));
+    const part = parts.find((p) => p.type === "timeZoneName");
+    return part ? part.value : "";
+  }
+  function wallClockDiffers(isoString, zoneA, zoneB, locale) {
+    const opts = { hour: "numeric", minute: "2-digit" };
+    const date = new Date(isoString);
+    const a = new Intl.DateTimeFormat(locale || "en-US", {
+      ...opts,
+      timeZone: zoneA
+    }).format(date);
+    const b = new Intl.DateTimeFormat(locale || "en-US", {
+      ...opts,
+      timeZone: zoneB
+    }).format(date);
+    return a !== b;
+  }
   function parseEventDate(value) {
     return DATE_ONLY_RE.test(value) ? /* @__PURE__ */ new Date(`${value}T00:00:00`) : new Date(value);
   }
   function formatDate(isoString, timezone, locale) {
     locale = locale || "en-US";
     return new Intl.DateTimeFormat(locale, {
-      timeZone: zoneFor(isoString, timezone),
+      timeZone: zoneFor(isoString, resolveTimeZone(timezone)),
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -3470,7 +3511,7 @@ ${text}</tr>
   function formatDateShort(isoString, timezone, locale) {
     locale = locale || "en-US";
     return new Intl.DateTimeFormat(locale, {
-      timeZone: zoneFor(isoString, timezone),
+      timeZone: zoneFor(isoString, resolveTimeZone(timezone)),
       month: "short",
       day: "numeric"
     }).format(new Date(isoString));
@@ -3499,6 +3540,32 @@ ${text}</tr>
     if (endDate && allDay) endDate = new Date(endDate.getTime() - 864e5);
     const raw = !endDate || Number.isNaN(endDate.getTime()) || endDate <= startDate ? fmt.format(startDate) : fmt.formatRange(startDate, endDate);
     return raw.replace(/\s+/g, " ");
+  }
+  function formatEventWhen(event, opts = {}) {
+    const { sourceZoneFallback, locale = "en-US", dateStyle = "short" } = opts;
+    const start = event.start;
+    const end = event.end;
+    if (!start) return "";
+    if (event.allDay || DATE_ONLY_RE.test(start)) {
+      return formatDateRange(start, end, { allDay: true, locale, dateStyle });
+    }
+    const viewer = viewerTimeZone();
+    const source = resolveTimeZone(event._sourceTimeZone, sourceZoneFallback);
+    const primary = formatDateRange(start, end, {
+      timeZone: viewer,
+      locale,
+      dateStyle
+    });
+    if (source === viewer || !wallClockDiffers(start, source, viewer, locale)) {
+      return primary;
+    }
+    const sourceTime = formatDateRange(start, void 0, {
+      timeZone: source,
+      locale,
+      dateStyle: "time"
+    });
+    const abbrev = zoneAbbrev(start, source, locale);
+    return `${primary} \xB7 ${sourceTime}${abbrev ? ` ${abbrev}` : ""}`;
   }
   function getDaysInMonth(year, month) {
     return new Date(year, month + 1, 0).getDate();
@@ -3540,6 +3607,9 @@ ${text}</tr>
       if (type === "day") parts.day = parseInt(value, 10);
     }
     return parts;
+  }
+  function getEventDateParts(isoString, locale) {
+    return getDatePartsInTz(isoString, viewerTimeZone(), locale);
   }
   var MONTH_NAMES_SHORT = [
     "JAN",
@@ -3636,9 +3706,9 @@ ${text}</tr>
       (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
     );
   }
-  function sortFeaturedByDate(events, timezone, locale) {
+  function sortFeaturedByDate(events, locale) {
     const dateKey = (e) => {
-      const p = getDatePartsInTz(e.start, timezone, locale);
+      const p = getEventDateParts(e.start, locale);
       return `${p.year}-${p.month}-${p.day}`;
     };
     const groups = /* @__PURE__ */ new Map();
@@ -3683,8 +3753,8 @@ ${text}</tr>
     wrapper.appendChild(img);
     return wrapper;
   }
-  function buildBadge(isoString, timezone, locale) {
-    const dateParts = getDatePartsInTz(isoString, timezone, locale);
+  function buildBadge(isoString, locale) {
+    const dateParts = getEventDateParts(isoString, locale);
     const badge = createElement("div", "already-card__badge");
     const day = createElement("div", "already-card__badge-day");
     day.textContent = dateParts.day;
@@ -3732,13 +3802,13 @@ ${text}</tr>
     const imageEl = createCardImage(event);
     if (imageEl) {
       imageEl.classList.add("already-card__image--badged");
-      const badge = buildBadge(event.start, timezone, locale);
+      const badge = buildBadge(event.start, locale);
       imageEl.appendChild(badge);
       card.appendChild(imageEl);
     }
     const body = createElement("div", "already-card__body");
     if (!event.image) {
-      const badge = buildBadge(event.start, timezone, locale);
+      const badge = buildBadge(event.start, locale);
       badge.classList.add("already-card__badge--inline");
       body.appendChild(badge);
     }
@@ -3746,9 +3816,8 @@ ${text}</tr>
     title.textContent = event.title;
     body.appendChild(title);
     const meta = createElement("div", "already-card__meta");
-    meta.textContent = formatDateRange(event.start, event.end, {
-      allDay: event.allDay,
-      timeZone: timezone,
+    meta.textContent = formatEventWhen(event, {
+      sourceZoneFallback: timezone,
       locale,
       dateStyle: "full"
     });
@@ -3799,9 +3868,8 @@ ${text}</tr>
     title.textContent = event.title;
     body.appendChild(title);
     const meta = createElement("div", "already-card__meta");
-    meta.textContent = formatDateRange(event.start, event.end, {
-      allDay: event.allDay,
-      timeZone: timezone,
+    meta.textContent = formatEventWhen(event, {
+      sourceZoneFallback: timezone,
       locale,
       dateStyle: "short"
     });
@@ -3827,9 +3895,8 @@ ${text}</tr>
     title.textContent = event.title;
     info.appendChild(title);
     const meta = createElement("div", "already-card__meta");
-    meta.textContent = formatDateRange(event.start, event.end, {
-      allDay: event.allDay,
-      timeZone: timezone,
+    meta.textContent = formatEventWhen(event, {
+      sourceZoneFallback: timezone,
       locale,
       dateStyle: "short"
     });
@@ -3840,7 +3907,7 @@ ${text}</tr>
       info.appendChild(loc);
     }
     row.appendChild(info);
-    const badge = buildBadge(event.start, timezone, locale);
+    const badge = buildBadge(event.start, locale);
     badge.classList.add("already-card__badge--inline");
     row.appendChild(badge);
     body.appendChild(row);
@@ -3880,9 +3947,8 @@ ${text}</tr>
       footer.appendChild(loc);
     }
     const meta = createElement("span", "already-card__meta");
-    meta.textContent = formatDateRange(event.start, event.end, {
-      allDay: event.allDay,
-      timeZone: timezone,
+    meta.textContent = formatEventWhen(event, {
+      sourceZoneFallback: timezone,
       locale,
       dateStyle: "short"
     });
@@ -4895,11 +4961,10 @@ ${text}</tr>
         bindEventClick(item, event, "day", config);
         const sameDay = event.end && isSameDay(parseEventDate(event.start), parseEventDate(event.end));
         const timeEl = createElement("div", "already-day-event-time");
-        timeEl.textContent = event.allDay ? allDayLabel : formatDateRange(event.start, sameDay ? event.end : void 0, {
-          timeZone: timezone,
-          locale,
-          dateStyle: "time"
-        });
+        timeEl.textContent = event.allDay ? allDayLabel : formatEventWhen(
+          { ...event, end: sameDay ? event.end : void 0 },
+          { sourceZoneFallback: timezone, locale, dateStyle: "time" }
+        );
         item.appendChild(timeEl);
         const info = createElement("div", "already-day-event-info");
         const titleEl = createElement("div", "already-day-event-title");
@@ -5136,9 +5201,8 @@ ${text}</tr>
     titleEl.textContent = event.title;
     content.appendChild(titleEl);
     const meta = createElement("div", "already-detail-meta");
-    const dateStr = formatDateRange(event.start, event.end, {
-      allDay: event.allDay,
-      timeZone: timezone,
+    const dateStr = formatEventWhen(event, {
+      sourceZoneFallback: timezone,
       locale,
       dateStyle: "full"
     });
@@ -5227,7 +5291,7 @@ ${text}</tr>
     const locale = config.locale;
     const theme = config._theme || THEME_DEFAULTS;
     events = filterHidden(events);
-    events = sortFeaturedByDate(events, timezone, locale);
+    events = sortFeaturedByDate(events, locale);
     const grid = createElement("div", "already-grid");
     const renderCard = getLayout(theme.layout);
     for (let i = 0; i < events.length; i++) {
@@ -5254,7 +5318,7 @@ ${text}</tr>
     const theme = config._theme || THEME_DEFAULTS;
     const orientation = theme.layout === "compact" ? "vertical" : "horizontal";
     events = filterHidden(events);
-    events = sortFeaturedByDate(events, timezone, locale);
+    events = sortFeaturedByDate(events, locale);
     const list2 = createElement("div", "already-list");
     const renderCard = getLayout(theme.layout);
     for (let i = 0; i < events.length; i++) {
@@ -5291,7 +5355,7 @@ ${text}</tr>
     const dayNames = getDayNames(locale, weekStartDay);
     const eventsByDate = {};
     for (const event of events) {
-      const parts = getDatePartsInTz(event.start, timezone, locale);
+      const parts = getEventDateParts(event.start, locale);
       const key = `${parts.year}-${parts.month}-${parts.day}`;
       if (!eventsByDate[key]) eventsByDate[key] = [];
       eventsByDate[key].push(event);
@@ -5452,7 +5516,7 @@ ${text}</tr>
       col.appendChild(header);
       const dayEvents = sortFeatured(
         events.filter((e) => {
-          const parts = getDatePartsInTz(e.start, timezone, locale);
+          const parts = getEventDateParts(e.start, locale);
           return parts.year === date.getFullYear() && parts.month === date.getMonth() && parts.day === date.getDate();
         })
       );
@@ -5683,14 +5747,17 @@ ${text}</tr>
       metaEl.setAttribute("content", content);
     }
     function setEventMeta(event) {
-      const tz = data?.calendar?.timezone || "UTC";
+      const calendarTz = data?.calendar?.timezone || "UTC";
+      const sourceTz = resolveTimeZone(event._sourceTimeZone, calendarTz);
       const dateStr = formatDateRange(event.start, event.end, {
         allDay: event.allDay,
-        timeZone: tz,
+        timeZone: sourceTz,
         locale: config.locale,
         dateStyle: "full"
       });
-      const descParts = [dateStr];
+      const abbrev = event.allDay ? "" : zoneAbbrev(event.start, sourceTz, config.locale);
+      const whenStr = abbrev ? `${dateStr} ${abbrev}` : dateStr;
+      const descParts = [whenStr];
       if (event.location) descParts.push(event.location);
       setMetaTag("og:title", event.title);
       setMetaTag("og:description", descParts.join(" \xB7 "));
@@ -5922,7 +5989,7 @@ ${text}</tr>
         renderView(viewState);
       });
       postReadyToParent(
-        true ? "0.7.0" : "unknown"
+        true ? "0.8.0" : "unknown"
       );
       if (window.parent !== window && document.referrer) {
         const tryAdmitInteraction = makeThrottle({
