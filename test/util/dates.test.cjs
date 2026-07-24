@@ -257,8 +257,10 @@ describe("zone helpers", () => {
     );
   });
 
-  // Same 4 rows as the worker repo's test/fixtures/zone-abbrev-parity.ts
-  // (ZONE_ABBREV_CASES). Kept in sync by convention — edit both together.
+  // Same rows as the worker repo's test/fixtures/zone-abbrev-parity.ts
+  // (ZONE_ABBREV_CASES). Covers both three-letter (EDT/EST/CDT/UTC) and
+  // offset-style (GMT±N) abbreviation shapes. Kept in sync by convention —
+  // edit both together.
   const ZONE_ABBREV_CASES = [
     {
       instant: "2026-07-15T15:00:00Z",
@@ -276,6 +278,11 @@ describe("zone helpers", () => {
       abbrev: "CDT",
     },
     { instant: "2026-07-15T15:00:00Z", zone: "UTC", abbrev: "UTC" },
+    {
+      instant: "2026-07-15T15:00:00Z",
+      zone: "Pacific/Auckland",
+      abbrev: "GMT+12",
+    },
   ];
   it("zoneAbbrev matches the shared parity table under this runtime's Intl", () => {
     for (const c of ZONE_ABBREV_CASES) {
