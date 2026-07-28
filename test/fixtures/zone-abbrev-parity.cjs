@@ -12,9 +12,14 @@
  * `main` at vendor-bump time and regex-parses the array literal
  * (`scripts/zone-abbrev-parity.js`) to detect the two tables drifting apart.
  * That parser requires:
- *   - a `ZONE_ABBREV_CASES = [ ... ];` array literal ending in `];`
- *   - rows of the form `{ instant: "...", zone: "...", abbrev: "..." }`
+ *   - an array literal assigned to the name ZONE_ABBREV_CASES, terminated
+ *     by a closing bracket + semicolon
+ *   - rows of the form { instant: ..., zone: ..., abbrev: ... }
  *   - DOUBLE-quoted strings, in that field order (instant, zone, abbrev)
+ *
+ * (Those bullets deliberately avoid spelling out the assignment verbatim: the
+ * parser's array-literal regex is non-greedy and would otherwise latch onto
+ * the example in this very comment and parse zero rows.)
  *
  * CRITICALLY, the drift check FAILS OPEN: renaming the const, reordering the
  * fields, switching to single quotes, or moving/renaming this file does NOT
