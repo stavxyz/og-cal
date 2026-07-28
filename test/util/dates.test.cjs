@@ -261,6 +261,12 @@ describe("zone helpers", () => {
   });
 
   it("zoneAbbrev matches the shared parity table under this runtime's Intl", () => {
+    // Tripwire: the loop below asserts nothing at all if the table is emptied
+    // (or silently truncated by a bad merge), so it would pass vacuously.
+    assert.ok(
+      ZONE_ABBREV_CASES.length >= 6,
+      `parity table shrank to ${ZONE_ABBREV_CASES.length} rows`,
+    );
     for (const c of ZONE_ABBREV_CASES) {
       assert.strictEqual(
         zoneAbbrev(c.instant, c.zone),
@@ -352,6 +358,39 @@ describe("formatEventWhen", () => {
       // Primary is the viewer-local range (no abbrev); the suffix is ONE
       // source-zone time + abbrev, per the spec form "8:00 PM · 3:00 PM EDT".
       assert.strictEqual(out, "Jul 15, 7:00 – 9:00 PM · 3:00 PM EDT");
+    } finally {
+      if (origTZ === undefined) delete process.env.TZ;
+      else process.env.TZ = origTZ;
+    }
+  });
+
+  it("renders offset-style source abbreviations in the suffix", () => {
+    // The parity table pins zoneAbbrev in isolation, but every other render
+    // assertion here uses a three-letter abbrev. Offset labels are the reason
+    // those rows exist: they are longer, and the sub-hour ones carry a colon,
+    // so exercise both through the actual " · {time} {abbrev}" suffix.
+    const origTZ = process.env.TZ;
+    try {
+      process.env.TZ = "UTC";
+      const base = {
+        start: "2026-07-15T19:00:00Z",
+        end: "2026-07-15T21:00:00Z",
+        allDay: false,
+      };
+      assert.strictEqual(
+        formatEventWhen(
+          { ...base, _sourceTimeZone: "Pacific/Auckland" },
+          { locale: "en-US", dateStyle: "short" },
+        ),
+        "Jul 15, 7:00 – 9:00 PM · 7:00 AM GMT+12",
+      );
+      assert.strictEqual(
+        formatEventWhen(
+          { ...base, _sourceTimeZone: "Asia/Kolkata" },
+          { locale: "en-US", dateStyle: "short" },
+        ),
+        "Jul 15, 7:00 – 9:00 PM · 12:30 AM GMT+5:30",
+      );
     } finally {
       if (origTZ === undefined) delete process.env.TZ;
       else process.env.TZ = origTZ;
