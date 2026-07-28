@@ -101,6 +101,31 @@ describe("setEventMeta keeps og:/twitter: share text source-anchored", () => {
     assert.match(desc, /Central Park/, desc);
   });
 
+  it("carries an offset-style source abbrev (GMT+5:30) through to og:description", async () => {
+    // Every other assertion in this file uses a three-letter abbrev. Zones
+    // without a CLDR short name render as a raw GMT offset instead — a longer
+    // label, and one that contains a colon — so prove that shape survives the
+    // og path too, not just zoneAbbrev in isolation.
+    process.env.TZ = "America/Chicago";
+    const desc = await ogDescriptionFor({
+      event: createTestEvent({
+        id: "og-offset",
+        title: "Morning Standup",
+        // 20:00 UTC on Jul 15 2026 = 1:30 AM on Jul 16 in Kolkata (UTC+5:30).
+        start: "2026-07-15T20:00:00Z",
+        end: "2026-07-15T22:00:00Z",
+        _sourceTimeZone: "Asia/Kolkata",
+      }),
+      calendarTimezone: "America/Chicago",
+    });
+    assert.ok(desc, "og:description should be written on the detail view");
+    assert.match(desc, /July 16, 2026/, desc);
+    assert.match(desc, /1:30/, `expected the Kolkata wall clock, got: ${desc}`);
+    assert.match(desc, /GMT\+5:30/, `expected the offset abbrev, got: ${desc}`);
+    // The Chicago viewer's rendering (3:00 PM CDT, Jul 15) must NOT appear.
+    assert.doesNotMatch(desc, /CDT/, desc);
+  });
+
   it("produces identical text regardless of the ambient viewer zone", async () => {
     process.env.TZ = "UTC";
     const fromUTC = await ogDescriptionFor({
