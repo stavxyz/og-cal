@@ -21,13 +21,19 @@
  * parser's array-literal regex is non-greedy and would otherwise latch onto
  * the example in this very comment and parse zero rows.)
  *
- * CRITICALLY, the drift check FAILS OPEN: renaming the const, reordering the
- * fields, switching to single quotes, or moving/renaming this file does NOT
- * fail the sibling's bump. The parse error only downgrades the check to a
- * WARNING and the vendor bump proceeds unverified — so the tables can silently
- * drift for as long as nobody notices the warning. Coordinate any reshape of
- * this literal (or of this file's path) with a matching change to
- * already.events' `copy-already-cal.js` in the same window.
+ * Failure semantics on the sibling's side (`copy-already-cal.js`):
+ *   - fetched OK but the literal won't parse (const renamed, fields reordered,
+ *     single quotes, table deleted from the file) → the bump FAILS HARD. That
+ *     is deliberate: receiving the bytes and not finding the table is much
+ *     closer to confirmed drift than to a transient outage.
+ *   - rows differ between the two repos → the bump FAILS HARD.
+ *   - the file can't be fetched at all (network error, or this path 404s and
+ *     the legacy fallback path is gone too) → WARNING, and the bump proceeds
+ *     unverified. That is the one remaining fail-open case, so deleting or
+ *     relocating this file is the one reshape that can go unnoticed.
+ * Coordinate any reshape of this literal — and especially of this file's PATH —
+ * with a matching change to already.events' `copy-already-cal.js` in the same
+ * window. (`--skip-parity-check` is the documented escape hatch there.)
  *
  * The rows deliberately cover three DIFFERENT abbreviation SHAPES, because
  * each renders differently in the ` · {time} {abbrev}` suffix:
