@@ -24,13 +24,15 @@
  * this literal (or of this file's path) with a matching change to
  * already.events' `copy-already-cal.js` in the same window.
  *
- * The rows deliberately cover different abbreviation SHAPES, because they
- * render differently in the ` · {time} {abbrev}` suffix:
+ * The rows deliberately cover three DIFFERENT abbreviation SHAPES, because
+ * each renders differently in the ` · {time} {abbrev}` suffix:
  *   - three-letter CLDR names (EDT/EST/CDT/UTC)
  *   - whole-hour GMT offsets (`GMT+12`) — not every zone has a three-letter
  *     CLDR short name; many render as a raw offset instead
+ *   - sub-hour GMT offsets (`GMT+5:30`), which carry a colon and are the
+ *     widest label the suffix has to accommodate
  * Keep at least one of each so a parity check can't pass on US-only
- * assumptions.
+ * (or whole-hour-only) assumptions.
  */
 const ZONE_ABBREV_CASES = [
   { instant: "2026-07-15T15:00:00Z", zone: "America/New_York", abbrev: "EDT" },
@@ -42,6 +44,7 @@ const ZONE_ABBREV_CASES = [
     zone: "Pacific/Auckland",
     abbrev: "GMT+12",
   },
+  { instant: "2026-07-15T15:00:00Z", zone: "Asia/Kolkata", abbrev: "GMT+5:30" },
 ];
 
 module.exports = { ZONE_ABBREV_CASES };
