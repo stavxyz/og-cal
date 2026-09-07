@@ -312,3 +312,39 @@ describe("applyTheme — camelCase to kebab-case CSS conversion", () => {
     assert.strictEqual(el.style.getPropertyValue("--already-bg-color"), "red");
   });
 });
+
+describe("semantic border tokens", () => {
+  // Both default to --already-border in base.css, so a theme that sets only
+  // `border` keeps today's behavior. These assert the override path reaches
+  // the right custom properties.
+  it("maps borderControl and borderGrid to their custom properties", () => {
+    const el = document.createElement("div");
+    applyTheme(
+      el,
+      { borderControl: "#1a1a1a", borderGrid: "rgba(0,0,0,.12)" },
+      [],
+    );
+    assert.strictEqual(
+      el.style.getPropertyValue("--already-border-control"),
+      "#1a1a1a",
+    );
+    assert.strictEqual(
+      el.style.getPropertyValue("--already-border-grid"),
+      "rgba(0,0,0,.12)",
+    );
+  });
+
+  it("leaves both unset when only `border` is themed, so they inherit it", () => {
+    const el = document.createElement("div");
+    applyTheme(el, { border: "#1a1a1a" }, []);
+    assert.strictEqual(
+      el.style.getPropertyValue("--already-border"),
+      "#1a1a1a",
+    );
+    assert.strictEqual(
+      el.style.getPropertyValue("--already-border-control"),
+      "",
+    );
+    assert.strictEqual(el.style.getPropertyValue("--already-border-grid"), "");
+  });
+});
