@@ -26,6 +26,9 @@
 
 /* ===== Container ===== */
 .already {
+  /* The event popover is absolutely positioned and measures its offsets
+     from this element, so this root has to be its containing block. */
+  position: relative;
   /* Semantic border tokens, derived from --already-border.
        control -> tab strip, nav bars, buttons, dropdowns
        grid    -> weekday header, week columns, event row separators
@@ -413,6 +416,9 @@
   border: 1px solid transparent;
   border-radius: 4px;
   position: relative;
+  /* Navigates to that day. Pointer-only by design: no role and no
+     tabindex, so the cursor is the whole affordance (issue #68). */
+  cursor: pointer;
 }
 
 .already-month-cell--empty {
@@ -531,6 +537,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  /* Navigates to that day. Pointer-only by design: no role and no
+     tabindex, so the cursor is the whole affordance (issue #68). */
+  cursor: pointer;
 }
 
 .already-week-col:last-child {
@@ -1499,14 +1508,6 @@
   border: 1px solid var(--already-border-control);
   border-radius: var(--already-radius);
   box-shadow: var(--already-shadow-hover);
-  overflow: hidden;
-}
-
-/* Day cells and week columns navigate to that day. Pointer-only by design:
-   they carry no role or tabindex, so the cursor is the whole affordance. */
-.already-month-cell:not(.already-month-cell--empty),
-.already-week-col {
-  cursor: pointer;
 }
 
 /* The cue that clicking the card opens the detail view: pointer cursor, a
@@ -1530,8 +1531,10 @@
   transition: transform 0.15s ease;
 }
 
+/* A distinct shadow, not --already-shadow-hover: the container already draws
+   that one, so reusing it here reads as no change on hover. */
 .already-event-popover__card:hover {
-  box-shadow: var(--already-shadow-hover);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
   transform: translateY(-1px);
 }
 

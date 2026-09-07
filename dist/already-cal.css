@@ -21,6 +21,7 @@
   --already-spacing: 1rem;
 }
 .already {
+  position: relative;
   --already-border-control: var(--already-border);
   --already-border-grid: var(--already-border);
   font-family: var(--already-font-family);
@@ -326,6 +327,7 @@
   border: 1px solid transparent;
   border-radius: 4px;
   position: relative;
+  cursor: pointer;
 }
 .already-month-cell--empty {
   background: transparent;
@@ -425,6 +427,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  cursor: pointer;
 }
 .already-week-col:last-child {
   border-right: none;
@@ -1222,11 +1225,6 @@
   border: 1px solid var(--already-border-control);
   border-radius: var(--already-radius);
   box-shadow: var(--already-shadow-hover);
-  overflow: hidden;
-}
-.already-month-cell:not(.already-month-cell--empty),
-.already-week-col {
-  cursor: pointer;
 }
 .already-event-popover__card {
   cursor: pointer;
@@ -1244,7 +1242,7 @@
   transition: transform 0.15s ease;
 }
 .already-event-popover__card:hover {
-  box-shadow: var(--already-shadow-hover);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
   transform: translateY(-1px);
 }
 .already-event-popover__card:hover::after {

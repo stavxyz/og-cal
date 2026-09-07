@@ -3636,6 +3636,10 @@ ${text}</tr>
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   }
+  function parseDateKey(key) {
+    const [year, month, day] = String(key).split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
   function getWeekDates(date, weekStartDay) {
     weekStartDay = weekStartDay || 0;
     const d = new Date(date);
@@ -4182,6 +4186,7 @@ ${text}</tr>
   var active = null;
   var openTimer = null;
   var closeTimer = null;
+  var lastPointerWasTouch = false;
   function clearTimers() {
     if (openTimer) {
       clearTimeout(openTimer);
@@ -4192,25 +4197,21 @@ ${text}</tr>
       closeTimer = null;
     }
   }
-  function closeEventPopover() {
+  function closeEventPopover(root) {
+    if (root && active && active.root !== root) return;
     clearTimers();
     if (!active) return;
-    const { el, detach, previousFocus } = active;
+    const { el, detach } = active;
     active = null;
     detach();
     el.remove();
-    if (previousFocus?.focus && el.contains(document.activeElement)) {
-      previousFocus.focus();
-    }
   }
-  function openEventPopover(anchorEl, event, root, config) {
+  function openEventPopover(anchorEl, event, root, config, viewName) {
     closeEventPopover();
     config = config || {};
     const theme = config._theme || THEME_DEFAULTS;
     const el = document.createElement("div");
     el.className = "already-event-popover";
-    el.setAttribute("role", "dialog");
-    el.setAttribute("aria-label", event.title || "Event");
     const card = safeRenderCard(getLayout(theme.layout), event, {
       orientation: theme.orientation,
       imagePosition: theme.imagePosition,
@@ -4220,14 +4221,11 @@ ${text}</tr>
       config
     });
     card.classList.add("already-event-popover__card");
-    card.addEventListener("click", () => {
-      const id = event.id;
-      closeEventPopover();
-      setEventDetail(id);
-    });
+    decorateCard(card, event, viewName || "month", config);
+    card.addEventListener("click", () => closeEventPopover());
     el.appendChild(card);
-    position(el, anchorEl, root);
     root.appendChild(el);
+    position(el, anchorEl, root);
     const onKeydown = (e) => {
       if (e.key === "Escape") {
         e.stopPropagation();
@@ -4243,53 +4241,66 @@ ${text}</tr>
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("visibilitychange", onDismiss);
     window.addEventListener("scroll", onDismiss, true);
+    window.addEventListener("resize", onDismiss);
     window.addEventListener("blur", onDismiss);
     el.addEventListener("mouseenter", clearTimers);
     el.addEventListener("mouseleave", scheduleClose);
     active = {
       el,
+      root,
       anchorEl,
-      previousFocus: document.activeElement,
       detach() {
         document.removeEventListener("keydown", onKeydown, true);
         document.removeEventListener("pointerdown", onPointerDown, true);
         document.removeEventListener("visibilitychange", onDismiss);
         window.removeEventListener("scroll", onDismiss, true);
+        window.removeEventListener("resize", onDismiss);
         window.removeEventListener("blur", onDismiss);
       }
     };
     return el;
   }
   function position(el, anchorEl, root) {
-    el.style.position = "absolute";
     const rootRect = root.getBoundingClientRect?.();
     const anchorRect = anchorEl.getBoundingClientRect?.();
     if (!rootRect || !anchorRect || !rootRect.width) return;
-    const top = anchorRect.bottom - rootRect.top;
+    const elRect = el.getBoundingClientRect();
+    const style = window.getComputedStyle?.(root);
+    const borderX = (Number.parseFloat(style?.borderLeftWidth) || 0) + (Number.parseFloat(style?.borderRightWidth) || 0);
+    const usableWidth = rootRect.width - borderX;
+    let top = anchorRect.bottom - rootRect.top;
+    if (top + elRect.height > rootRect.height) {
+      const flipped = anchorRect.top - rootRect.top - elRect.height;
+      top = flipped >= 0 ? flipped : Math.max(0, rootRect.height - elRect.height);
+    }
     let left = anchorRect.left - rootRect.left;
-    const POPOVER_WIDTH = 300;
-    if (left + POPOVER_WIDTH > rootRect.width) {
-      left = Math.max(0, rootRect.width - POPOVER_WIDTH);
+    if (left + elRect.width > usableWidth) {
+      left = Math.max(0, usableWidth - elRect.width);
     }
     el.style.top = `${top}px`;
     el.style.left = `${left}px`;
   }
   function scheduleClose() {
     clearTimers();
-    closeTimer = setTimeout(closeEventPopover, CLOSE_GRACE_MS);
+    closeTimer = setTimeout(() => closeEventPopover(), CLOSE_GRACE_MS);
   }
-  function bindEventPopover(anchorEl, event, root, config) {
+  function bindEventPopover(anchorEl, event, root, config, viewName) {
     anchorEl.addEventListener("pointerdown", (e) => {
-      if (e.pointerType !== "touch") return;
+      if (e.pointerType !== "touch") {
+        lastPointerWasTouch = false;
+        return;
+      }
+      lastPointerWasTouch = true;
       clearTimers();
       if (active?.anchorEl === anchorEl) return;
-      openEventPopover(anchorEl, event, root, config);
+      if (e.cancelable) e.preventDefault();
+      openEventPopover(anchorEl, event, root, config, viewName);
     });
-    anchorEl.addEventListener("mouseenter", (e) => {
-      if (e.pointerType === "touch") return;
+    anchorEl.addEventListener("mouseenter", () => {
+      if (lastPointerWasTouch) return;
       clearTimers();
       openTimer = setTimeout(() => {
-        openEventPopover(anchorEl, event, root, config);
+        openEventPopover(anchorEl, event, root, config, viewName);
       }, OPEN_DELAY_MS);
     });
     anchorEl.addEventListener("mouseleave", () => {
@@ -5478,9 +5489,10 @@ ${text}</tr>
     const maxEventsPerDay = config.maxEventsPerDay || 3;
     const i18n = config.i18n || {};
     const moreEventsTemplate = i18n.moreEvents || "+{count} more";
-    closeEventPopover();
+    closeEventPopover(container.closest?.(".already") || container);
     events = filterHidden(events);
     const popoverRoot = container.closest?.(".already") || container;
+    const dayViewEnabled = !config.views || config.views.includes("day");
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -5556,7 +5568,9 @@ ${text}</tr>
       const dayNum = createElement("div", "already-month-day");
       dayNum.textContent = d;
       cell.appendChild(dayNum);
-      cell.addEventListener("click", () => {
+      cell.addEventListener("click", (e) => {
+        if (e.target.closest?.(".already-month-chip")) return;
+        if (!dayViewEnabled) return;
         setDayView(toDateKey(cellDate), config);
       });
       for (const event of dayEvents.slice(0, maxEventsPerDay)) {
@@ -5565,8 +5579,8 @@ ${text}</tr>
           "already-month-chip" + (event.featured ? " already-month-chip--featured" : "")
         );
         chip.textContent = event.title;
-        bindEventClick(chip, event, "month", config, { stopPropagation: true });
-        bindEventPopover(chip, event, popoverRoot, { ...config, timezone });
+        bindEventClick(chip, event, "month", config);
+        bindEventPopover(chip, event, popoverRoot, config, "month");
         cell.appendChild(chip);
       }
       if (dayEvents.length > maxEventsPerDay) {
@@ -5606,6 +5620,9 @@ ${text}</tr>
     const weekStartDay = config.weekStartDay || 0;
     const dates = getWeekDates(currentDate, weekStartDay);
     events = filterHidden(events);
+    const popoverRoot = container.closest?.(".already") || container;
+    closeEventPopover(popoverRoot);
+    const dayViewEnabled = !config.views || config.views.includes("day");
     const week = createElement("div", "already-week");
     const nav = createElement("div", "already-week-nav");
     const startLabel = formatDateShort(dates[0].toISOString(), timezone, locale);
@@ -5634,8 +5651,6 @@ ${text}</tr>
     });
     nav.appendChild(nextBtn);
     week.appendChild(nav);
-    closeEventPopover();
-    const popoverRoot = container.closest?.(".already") || container;
     const columns = createElement("div", "already-week-columns");
     const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
       weekday: "short"
@@ -5666,11 +5681,13 @@ ${text}</tr>
           "already-week-event" + (event.featured ? " already-week-event--featured" : "")
         );
         block2.textContent = event.title;
-        bindEventClick(block2, event, "week", config, { stopPropagation: true });
-        bindEventPopover(block2, event, popoverRoot, { ...config, timezone });
+        bindEventClick(block2, event, "week", config);
+        bindEventPopover(block2, event, popoverRoot, config, "week");
         col.appendChild(block2);
       }
-      col.addEventListener("click", () => {
+      col.addEventListener("click", (e) => {
+        if (e.target.closest?.(".already-week-event")) return;
+        if (!dayViewEnabled) return;
         setDayView(toDateKey(date), config);
       });
       columns.appendChild(col);
@@ -5962,7 +5979,7 @@ ${text}</tr>
       };
     }
     function renderView(viewState) {
-      closeEventPopover();
+      closeEventPopover(el);
       viewContainer.querySelector(".already-detail-share")?.destroy?.();
       headerContainer.querySelector(".already-header-share")?.toggleAttribute("hidden", viewState.view === "detail");
       lastViewState = viewState;
@@ -6011,7 +6028,7 @@ ${text}</tr>
           renderWeekView(viewContainer, events, timezone, currentDate, config);
           break;
         case "day": {
-          const dayDate = viewState.date ? new Date(viewState.date) : currentDate;
+          const dayDate = viewState.date ? parseDateKey(viewState.date) : currentDate;
           renderDayView(viewContainer, events, timezone, dayDate, config);
           break;
         }
@@ -6250,7 +6267,7 @@ ${text}</tr>
       window.removeEventListener("message", handleMessage);
       if (removeHashListener) removeHashListener();
       if (interactionCleanup) interactionCleanup();
-      closeEventPopover();
+      closeEventPopover(el);
       headerContainer.querySelector(".already-header-share")?.destroy?.();
       headerContainer.querySelector(".already-subscribe-menu")?.destroy?.();
       viewContainer.querySelector(".already-detail-share")?.destroy?.();
