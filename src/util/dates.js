@@ -342,6 +342,21 @@ export const MONTH_NAMES_SHORT = [
   "DEC",
 ];
 
+/**
+ * Format a Date as YYYY-MM-DD using its LOCAL calendar fields.
+ *
+ * Not `toISOString().slice(0, 10)`: that reads the UTC day, which differs from
+ * the local day for most of the clock in any non-UTC zone. A month cell built
+ * from `new Date(year, month, d)` is local midnight, so in UTC+14 the UTC day
+ * is already the previous date and the viewer would land on the wrong day.
+ */
+export function toDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /** Return an array of 7 Date objects representing the week containing the given date. */
 export function getWeekDates(date, weekStartDay) {
   weekStartDay = weekStartDay || 0;
