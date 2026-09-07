@@ -49,10 +49,12 @@ describe("month view: clicking a day cell", () => {
   it("does NOT navigate from a padding cell", () => {
     renderMonthView(container, [], "America/Chicago", APRIL, {});
     const empty = container.querySelector(".already-month-cell--empty");
-    if (empty) {
-      empty.click();
-      assert.equal(window.location.hash, "");
-    }
+    assert.ok(
+      empty,
+      "April 2026 starts on a Wednesday, so padding cells exist",
+    );
+    empty.click();
+    assert.equal(window.location.hash, "");
   });
 
   it("does not advertise itself to assistive tech as a button", () => {
@@ -95,5 +97,68 @@ describe("week view: clicking a day column", () => {
     const block = container.querySelector(".already-week-event");
     block.click();
     assert.match(window.location.hash, /^#event\//);
+  });
+});
+
+// M8: renderView's `case "day"` has no guard, so navigating there from a
+// calendar configured without it drops the viewer into a view their own
+// selector does not list.
+describe("day navigation respects config.views", () => {
+  it("month does not navigate when day is not an enabled view", () => {
+    renderMonthView(container, [], "America/Chicago", APRIL, {
+      views: ["month", "grid"],
+    });
+    const cell = container.querySelector(
+      ".already-month-cell:not(.already-month-cell--empty)",
+    );
+    cell.click();
+    assert.equal(window.location.hash, "");
+  });
+
+  it("week does not navigate when day is not an enabled view", () => {
+    renderWeekView(container, [], "America/Chicago", new Date(2026, 3, 8), {
+      views: ["week", "list"],
+    });
+    container.querySelector(".already-week-col").click();
+    assert.equal(window.location.hash, "");
+  });
+
+  it("navigates when views is unset", () => {
+    renderMonthView(container, [], "America/Chicago", APRIL, {});
+    container
+      .querySelector(".already-month-cell:not(.already-month-cell--empty)")
+      .click();
+    assert.match(window.location.hash, /^#day\//);
+  });
+});
+
+// H2: clicks on an event must still reach the root, where already-cal.js binds
+// the listener that posts the cross-origin engagement signal. stopPropagation
+// on the chip killed that; the cell handler now bails by target instead.
+describe("event clicks still bubble to the root", () => {
+  it("month chip click reaches an ancestor listener without navigating to the day", () => {
+    const events = [createTestEvent({ start: "2026-04-04T15:00:00Z" })];
+    renderMonthView(container, events, "America/Chicago", APRIL, {});
+    let reachedRoot = 0;
+    container.addEventListener("click", () => reachedRoot++);
+    container.querySelector(".already-month-chip").click();
+    assert.equal(reachedRoot, 1, "click bubbled past the chip");
+    assert.match(window.location.hash, /^#event\//, "went to the event");
+  });
+
+  it("week block click reaches an ancestor listener without navigating to the day", () => {
+    const events = [createTestEvent({ start: "2026-04-08T15:00:00Z" })];
+    renderWeekView(
+      container,
+      events,
+      "America/Chicago",
+      new Date(2026, 3, 8),
+      {},
+    );
+    let reachedRoot = 0;
+    container.addEventListener("click", () => reachedRoot++);
+    container.querySelector(".already-week-event").click();
+    assert.equal(reachedRoot, 1, "click bubbled past the block");
+    assert.match(window.location.hash, /^#event\//, "went to the event");
   });
 });

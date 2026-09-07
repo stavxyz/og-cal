@@ -34,13 +34,17 @@ export function renderMonthView(
   // The nav buttons below re-render by calling this function directly,
   // bypassing already-cal.js's renderView. A chip destroyed under the
   // pointer never fires mouseleave, so close here too or the card hangs.
-  closeEventPopover();
+  closeEventPopover(container.closest?.(".already") || container);
 
   events = filterHidden(events);
 
   // The popover parents to the `.already` root so it inherits the theme's
   // custom properties; `container` is the inner view container.
   const popoverRoot = container.closest?.(".already") || container;
+  // An embedder who left "day" out of `views` disabled it deliberately, and
+  // renderView's switch has no guard of its own, so navigating there would
+  // strand them in a view their selector does not list.
+  const dayViewEnabled = !config.views || config.views.includes("day");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -149,7 +153,9 @@ export function renderMonthView(
     // grid whose chips are already focusable costs more than it buys).
     // Claiming to be a button while unreachable by keyboard would be worse
     // than not claiming it. Chips stopPropagation, so they win over the cell.
-    cell.addEventListener("click", () => {
+    cell.addEventListener("click", (e) => {
+      if (e.target.closest?.(".already-month-chip")) return;
+      if (!dayViewEnabled) return;
       setDayView(toDateKey(cellDate), config);
     });
 
@@ -160,8 +166,11 @@ export function renderMonthView(
           (event.featured ? " already-month-chip--featured" : ""),
       );
       chip.textContent = event.title;
-      bindEventClick(chip, event, "month", config, { stopPropagation: true });
-      bindEventPopover(chip, event, popoverRoot, { ...config, timezone });
+      // No stopPropagation: the click has to reach the root's interaction
+      // listener, which posts the cross-origin engagement signal. The cell
+      // handler below bails on chip clicks by target instead.
+      bindEventClick(chip, event, "month", config);
+      bindEventPopover(chip, event, popoverRoot, config, "month");
       cell.appendChild(chip);
     }
 

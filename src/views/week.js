@@ -29,6 +29,15 @@ export function renderWeekView(
 
   events = filterHidden(events);
 
+  const popoverRoot = container.closest?.(".already") || container;
+  // The nav buttons re-render by calling this function directly, bypassing
+  // already-cal.js's renderView. A block destroyed under the pointer never
+  // fires mouseleave, so close here too or the card hangs.
+  closeEventPopover(popoverRoot);
+  // An embedder who left "day" out of `views` disabled it deliberately, and
+  // renderView's switch has no guard of its own.
+  const dayViewEnabled = !config.views || config.views.includes("day");
+
   const week = createElement("div", "already-week");
 
   // Navigation
@@ -63,13 +72,6 @@ export function renderWeekView(
   nav.appendChild(nextBtn);
 
   week.appendChild(nav);
-
-  // The nav buttons below re-render by calling this function directly,
-  // bypassing already-cal.js's renderView. A chip destroyed under the
-  // pointer never fires mouseleave, so close here too or the card hangs.
-  closeEventPopover();
-
-  const popoverRoot = container.closest?.(".already") || container;
 
   const columns = createElement("div", "already-week-columns");
   const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
@@ -113,17 +115,19 @@ export function renderWeekView(
           (event.featured ? " already-week-event--featured" : ""),
       );
       block.textContent = event.title;
-      // stopPropagation so an event click does not also fire the column's
-      // day navigation below. Month's chips already pass this; week's did
-      // not, because until now nothing listened on the column.
-      bindEventClick(block, event, "week", config, { stopPropagation: true });
-      bindEventPopover(block, event, popoverRoot, { ...config, timezone });
+      // No stopPropagation: the click has to reach the root's interaction
+      // listener, which posts the cross-origin engagement signal. The column
+      // handler below bails on block clicks by target instead.
+      bindEventClick(block, event, "week", config);
+      bindEventPopover(block, event, popoverRoot, config, "week");
       col.appendChild(block);
     }
 
     // Pointer-only, matching month: see the comment there for why this
     // carries no role or tabindex.
-    col.addEventListener("click", () => {
+    col.addEventListener("click", (e) => {
+      if (e.target.closest?.(".already-week-event")) return;
+      if (!dayViewEnabled) return;
       setDayView(toDateKey(date), config);
     });
 

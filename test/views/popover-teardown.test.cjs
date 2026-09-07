@@ -38,7 +38,7 @@ beforeEach(() => {
 // is destroyed by a re-render, so no further pointer event ever fires on it.
 // The month and week nav buttons re-render DIRECTLY rather than going through
 // already-cal.js's renderView, so the guard has to live in the view too.
-describe("popover survives no re-render", () => {
+describe("re-rendering closes an open popover", () => {
   it("month: clicking next month closes an open popover", () => {
     const events = [createTestEvent({ start: "2026-04-04T15:00:00Z" })];
     renderMonthView(
