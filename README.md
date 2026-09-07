@@ -252,7 +252,7 @@ Themes have two independent axes: **layouts** (card structure) and **palettes** 
 | `light` | Clean default — system-ui, subtle shadows **(default)** |
 | `dark` | Dark mode — dark backgrounds, no shadows |
 | `warm` | Earthy/organic — Georgia serif, generous radius, warm shadows |
-| `cool` | Modern/minimal — Inter font, tight radius, crisp shadows |
+| `cool` | Modern/minimal — system font, tight radius, crisp shadows |
 
 ### Usage
 
