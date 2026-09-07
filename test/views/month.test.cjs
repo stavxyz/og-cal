@@ -56,8 +56,23 @@ describe("renderMonthView", () => {
     const container = document.createElement("div");
     renderMonthView(container, [], "UTC", april2026, {});
     const title = container.querySelector(".already-month-title");
-    assert.ok(title.textContent.includes("April"));
-    assert.ok(title.textContent.includes("2026"));
+    // Asserted as the WHOLE string, not with includes(). The previous
+    // substring assertions passed against "April 2026 2026", which shipped
+    // for five months: getMonthName already formats the year, and the caller
+    // appended it a second time.
+    assert.strictEqual(title.textContent, "April 2026");
+  });
+
+  it("does not repeat the year in the month title", () => {
+    const container = document.createElement("div");
+    renderMonthView(container, [], "UTC", april2026, {});
+    const title = container.querySelector(".already-month-title");
+    const years = title.textContent.match(/2026/g) || [];
+    assert.strictEqual(
+      years.length,
+      1,
+      `year repeated in "${title.textContent}"`,
+    );
   });
 
   it("renders event chips in correct day cells", () => {

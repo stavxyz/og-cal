@@ -5377,7 +5377,7 @@ ${text}</tr>
     });
     nav.appendChild(prevBtn);
     const title = createElement("span", "already-month-title");
-    title.textContent = `${monthName} ${year}`;
+    title.textContent = monthName;
     nav.appendChild(title);
     const nextBtn = createElement("button", "already-month-next", {
       "aria-label": "Next month"
