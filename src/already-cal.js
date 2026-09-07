@@ -18,6 +18,7 @@ import { renderViewSelector } from "./ui/view-selector.js";
 import {
   formatDateRange,
   isPast,
+  parseDateKey,
   resolveTimeZone,
   zoneAbbrev,
 } from "./util/dates.js";
@@ -403,12 +404,11 @@ export function init(userConfig) {
   }
 
   function renderView(viewState) {
-    // Close any open event popover FIRST. This is the one exit mouseleave
-    // cannot cover: a re-render destroys the chip the pointer is sitting on,
-    // so no further pointer event ever fires on it and the card would hang
-    // there permanently. Month/week nav, tag filters and data refresh all
-    // land here.
-    closeEventPopover();
+    // A re-render destroys the chip the pointer is sitting on, so no further
+    // pointer event ever fires on it and an open card would hang there
+    // permanently. Month and week nav re-render through their own view
+    // functions rather than here, so those close separately.
+    closeEventPopover(el);
     // Tear down the prior detail-view share button's pending revert timer
     // before this render replaces it, so a stale timer can't fire late.
     viewContainer.querySelector(".already-detail-share")?.destroy?.();
@@ -481,7 +481,9 @@ export function init(userConfig) {
         renderWeekView(viewContainer, events, timezone, currentDate, config);
         break;
       case "day": {
-        const dayDate = viewState.date ? new Date(viewState.date) : currentDate;
+        const dayDate = viewState.date
+          ? parseDateKey(viewState.date)
+          : currentDate;
         renderDayView(viewContainer, events, timezone, dayDate, config);
         break;
       }
@@ -820,7 +822,7 @@ export function init(userConfig) {
     window.removeEventListener("message", handleMessage);
     if (removeHashListener) removeHashListener();
     if (interactionCleanup) interactionCleanup();
-    closeEventPopover();
+    closeEventPopover(el);
     // Cancel any pending share-button revert timers — the header button
     // persists across renders; the current view may also have one pending.
     headerContainer.querySelector(".already-header-share")?.destroy?.();
