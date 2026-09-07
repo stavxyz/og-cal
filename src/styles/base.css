@@ -6,15 +6,6 @@
   --already-primary: #8b4513;
   --already-primary-text: #ffffff;
   --already-background: #f5f0eb;
-  /* Semantic border tokens. Both default to --already-border, so a theme that
-     sets only `border` behaves exactly as before. They exist because one token
-     could not express a host that wants a strong rule under the header and
-     quiet lines inside the grid: setting `border` to a hard color made the
-     view-selector strip and every grid line equally heavy.
-       control -> tab strip, nav bars, buttons, dropdowns
-       grid    -> weekday header, week columns, event row separators */
-  --already-border-control: var(--already-border);
-  --already-border-grid: var(--already-border);
   --already-surface: #ffffff;
   --already-text: #1a1a1a;
   --already-text-secondary: #666;
@@ -35,6 +26,25 @@
 
 /* ===== Container ===== */
 .already {
+  /* Semantic border tokens, derived from --already-border.
+       control -> tab strip, nav bars, buttons, dropdowns
+       grid    -> weekday header, week columns, event row separators
+
+     DECLARED HERE, NOT ON :root, and that is load-bearing. `var()` inside a
+     custom property is substituted at computed-value time on the element the
+     declaration lands on, not lazily at each use site. Declared on :root they
+     captured :root's --already-border (the base default) and inherited that
+     literal downward, so a palette (.already[data-palette]) or a runtime
+     el.style.setProperty on .already never reached them: the dark palette
+     rendered 6%-black borders on a #1a1a1a surface, and a theme setting only
+     `border` silently lost it everywhere. Declaring them on the same element
+     the overrides land on is what makes the fallback actually inherit.
+
+     Palette rules are .already[data-palette="..."] (0,2,0) and still outrank
+     this (0,1,0) for --already-border, and an inline override still outranks
+     both for the derived tokens themselves. */
+  --already-border-control: var(--already-border);
+  --already-border-grid: var(--already-border);
   font-family: var(--already-font-family);
   color: var(--already-text);
   background: var(--already-background);
@@ -358,7 +368,7 @@
 
 .already-month-prev:hover,
 .already-month-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 
 .already-month-prev:focus-visible,
@@ -495,7 +505,7 @@
 
 .already-week-prev:hover,
 .already-week-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 
 .already-week-prev:focus-visible,
@@ -610,7 +620,7 @@
 
 .already-day-prev:hover,
 .already-day-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 
 .already-day-prev:focus-visible,

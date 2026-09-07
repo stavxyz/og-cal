@@ -3,8 +3,6 @@
   --already-primary: #8b4513;
   --already-primary-text: #ffffff;
   --already-background: #f5f0eb;
-  --already-border-control: var(--already-border);
-  --already-border-grid: var(--already-border);
   --already-surface: #ffffff;
   --already-text: #1a1a1a;
   --already-text-secondary: #666;
@@ -23,6 +21,8 @@
   --already-spacing: 1rem;
 }
 .already {
+  --already-border-control: var(--already-border);
+  --already-border-grid: var(--already-border);
   font-family: var(--already-font-family);
   color: var(--already-text);
   background: var(--already-background);
@@ -288,7 +288,7 @@
 }
 .already-month-prev:hover,
 .already-month-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 .already-month-prev:focus-visible,
 .already-month-next:focus-visible {
@@ -403,7 +403,7 @@
 }
 .already-week-prev:hover,
 .already-week-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 .already-week-prev:focus-visible,
 .already-week-next:focus-visible {
@@ -500,7 +500,7 @@
 }
 .already-day-prev:hover,
 .already-day-next:hover {
-  background: var(--already-border-control);
+  background: var(--already-highlight);
 }
 .already-day-prev:focus-visible,
 .already-day-next:focus-visible {
@@ -1309,7 +1309,7 @@
 .already-card__footer {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--already-border);
+  border-top: 1px solid var(--already-border-grid);
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -1322,7 +1322,7 @@
 }
 .already-card__tag {
   font-size: 0.625rem;
-  border: 1px solid var(--already-border);
+  border: 1px solid var(--already-border-control);
   border-radius: 0.75rem;
   padding: 0.125rem 0.5rem;
   color: var(--already-text-secondary);

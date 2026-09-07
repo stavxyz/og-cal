@@ -314,9 +314,43 @@ describe("applyTheme — camelCase to kebab-case CSS conversion", () => {
 });
 
 describe("semantic border tokens", () => {
-  // Both default to --already-border in base.css, so a theme that sets only
-  // `border` keeps today's behavior. These assert the override path reaches
-  // the right custom properties.
+  // These are declared as `var(--already-border)`, and `var()` inside a custom
+  // property substitutes at computed-value time ON THE ELEMENT THE DECLARATION
+  // LANDS ON, not lazily at each use site. Declared on :root they captured
+  // :root's --already-border and inherited that literal down, so a palette
+  // (.already[data-palette]) and a runtime setProperty on .already never
+  // reached them: the dark palette rendered 6%-black borders on #1a1a1a, and a
+  // theme setting only `border` silently lost it everywhere.
+  //
+  // jsdom does not resolve var() at all (getComputedStyle returns the literal
+  // "var(--x)"), so a computed-style test is not possible in this harness and
+  // a browser is disproportionate here. This asserts the structural property
+  // the cascade depends on: the declarations must live on the same element the
+  // overrides land on. It fails if they are moved back to :root.
+  const cssPath = require("node:path").join(
+    __dirname,
+    "../src/styles/base.css",
+  );
+  const css = require("node:fs").readFileSync(cssPath, "utf8");
+  const blockFor = (selector) => {
+    const start = css.indexOf(`${selector} {`);
+    assert.notStrictEqual(start, -1, `no ${selector} block`);
+    return css.slice(start, css.indexOf("}", start));
+  };
+
+  for (const token of ["--already-border-control", "--already-border-grid"]) {
+    it(`declares ${token} on .already, not :root, so overrides reach it`, () => {
+      assert.ok(
+        blockFor(".already").includes(`${token}: var(--already-border)`),
+        `${token} must be declared on .already`,
+      );
+      assert.ok(
+        !blockFor(":root").includes(token),
+        `${token} on :root freezes at the base default and ignores palettes`,
+      );
+    });
+  }
+
   it("maps borderControl and borderGrid to their custom properties", () => {
     const el = document.createElement("div");
     applyTheme(
@@ -334,17 +368,13 @@ describe("semantic border tokens", () => {
     );
   });
 
-  it("leaves both unset when only `border` is themed, so they inherit it", () => {
-    const el = document.createElement("div");
-    applyTheme(el, { border: "#1a1a1a" }, []);
-    assert.strictEqual(
-      el.style.getPropertyValue("--already-border"),
-      "#1a1a1a",
+  it("does not use a border token as a background fill", () => {
+    // A border color as a hover FILL was harmless while `border` was always
+    // subtle. Now that a host may set a hard control color for a strong frame,
+    // it would fill nav buttons with near-black on hover.
+    assert.ok(
+      !/background:\s*var\(--already-border/.test(css),
+      "border tokens are for edges; use --already-highlight for fills",
     );
-    assert.strictEqual(
-      el.style.getPropertyValue("--already-border-control"),
-      "",
-    );
-    assert.strictEqual(el.style.getPropertyValue("--already-border-grid"), "");
   });
 });
