@@ -3,6 +3,7 @@ import { register } from "./registry.js";
 import { getInitialView, onHashChange, parseHash, setView } from "./router.js";
 import { applyTheme } from "./theme.js";
 import { addThemeName, getTheme, getThemeNames } from "./themes/registry.js";
+import { closeEventPopover } from "./ui/event-popover.js";
 import { renderHeader } from "./ui/header.js";
 import { paginateEvents, renderPaginationButtons } from "./ui/pagination.js";
 import { renderPastToggle } from "./ui/past-toggle.js";
@@ -402,6 +403,12 @@ export function init(userConfig) {
   }
 
   function renderView(viewState) {
+    // Close any open event popover FIRST. This is the one exit mouseleave
+    // cannot cover: a re-render destroys the chip the pointer is sitting on,
+    // so no further pointer event ever fires on it and the card would hang
+    // there permanently. Month/week nav, tag filters and data refresh all
+    // land here.
+    closeEventPopover();
     // Tear down the prior detail-view share button's pending revert timer
     // before this render replaces it, so a stale timer can't fire late.
     viewContainer.querySelector(".already-detail-share")?.destroy?.();
@@ -813,6 +820,7 @@ export function init(userConfig) {
     window.removeEventListener("message", handleMessage);
     if (removeHashListener) removeHashListener();
     if (interactionCleanup) interactionCleanup();
+    closeEventPopover();
     // Cancel any pending share-button revert timers — the header button
     // persists across renders; the current view may also have one pending.
     headerContainer.querySelector(".already-header-share")?.destroy?.();

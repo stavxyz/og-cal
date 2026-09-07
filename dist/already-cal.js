@@ -3438,6 +3438,11 @@ ${text}</tr>
     const key = storageKey(config);
     localStorage.setItem(key, view);
   }
+  function setDayView(dateStr, config) {
+    window.location.hash = `day/${dateStr}`;
+    const key = storageKey(config);
+    localStorage.setItem(key, "day");
+  }
   function setEventDetail(eventId) {
     window.location.hash = `event/${eventId}`;
   }
@@ -3625,6 +3630,12 @@ ${text}</tr>
     "NOV",
     "DEC"
   ];
+  function toDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
   function getWeekDates(date, weekStartDay) {
     weekStartDay = weekStartDay || 0;
     const d = new Date(date);
@@ -4163,6 +4174,127 @@ ${text}</tr>
       overrideKeys.push(prop);
     }
     return { ...theme, overrideKeys };
+  }
+
+  // src/ui/event-popover.js
+  var OPEN_DELAY_MS = 150;
+  var CLOSE_GRACE_MS = 120;
+  var active = null;
+  var openTimer = null;
+  var closeTimer = null;
+  function clearTimers() {
+    if (openTimer) {
+      clearTimeout(openTimer);
+      openTimer = null;
+    }
+    if (closeTimer) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+  }
+  function closeEventPopover() {
+    clearTimers();
+    if (!active) return;
+    const { el, detach, previousFocus } = active;
+    active = null;
+    detach();
+    el.remove();
+    if (previousFocus?.focus && el.contains(document.activeElement)) {
+      previousFocus.focus();
+    }
+  }
+  function openEventPopover(anchorEl, event, root, config) {
+    closeEventPopover();
+    config = config || {};
+    const theme = config._theme || THEME_DEFAULTS;
+    const el = document.createElement("div");
+    el.className = "already-event-popover";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", event.title || "Event");
+    const card = safeRenderCard(getLayout(theme.layout), event, {
+      orientation: theme.orientation,
+      imagePosition: theme.imagePosition,
+      index: 0,
+      timezone: config.timezone,
+      locale: config.locale,
+      config
+    });
+    card.classList.add("already-event-popover__card");
+    card.addEventListener("click", () => {
+      const id = event.id;
+      closeEventPopover();
+      setEventDetail(id);
+    });
+    el.appendChild(card);
+    position(el, anchorEl, root);
+    root.appendChild(el);
+    const onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeEventPopover();
+      }
+    };
+    const onPointerDown = (e) => {
+      if (el.contains(e.target) || anchorEl.contains(e.target)) return;
+      closeEventPopover();
+    };
+    const onDismiss = () => closeEventPopover();
+    document.addEventListener("keydown", onKeydown, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("visibilitychange", onDismiss);
+    window.addEventListener("scroll", onDismiss, true);
+    window.addEventListener("blur", onDismiss);
+    el.addEventListener("mouseenter", clearTimers);
+    el.addEventListener("mouseleave", scheduleClose);
+    active = {
+      el,
+      anchorEl,
+      previousFocus: document.activeElement,
+      detach() {
+        document.removeEventListener("keydown", onKeydown, true);
+        document.removeEventListener("pointerdown", onPointerDown, true);
+        document.removeEventListener("visibilitychange", onDismiss);
+        window.removeEventListener("scroll", onDismiss, true);
+        window.removeEventListener("blur", onDismiss);
+      }
+    };
+    return el;
+  }
+  function position(el, anchorEl, root) {
+    el.style.position = "absolute";
+    const rootRect = root.getBoundingClientRect?.();
+    const anchorRect = anchorEl.getBoundingClientRect?.();
+    if (!rootRect || !anchorRect || !rootRect.width) return;
+    const top = anchorRect.bottom - rootRect.top;
+    let left = anchorRect.left - rootRect.left;
+    const POPOVER_WIDTH = 300;
+    if (left + POPOVER_WIDTH > rootRect.width) {
+      left = Math.max(0, rootRect.width - POPOVER_WIDTH);
+    }
+    el.style.top = `${top}px`;
+    el.style.left = `${left}px`;
+  }
+  function scheduleClose() {
+    clearTimers();
+    closeTimer = setTimeout(closeEventPopover, CLOSE_GRACE_MS);
+  }
+  function bindEventPopover(anchorEl, event, root, config) {
+    anchorEl.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      clearTimers();
+      if (active?.anchorEl === anchorEl) return;
+      openEventPopover(anchorEl, event, root, config);
+    });
+    anchorEl.addEventListener("mouseenter", (e) => {
+      if (e.pointerType === "touch") return;
+      clearTimers();
+      openTimer = setTimeout(() => {
+        openEventPopover(anchorEl, event, root, config);
+      }, OPEN_DELAY_MS);
+    });
+    anchorEl.addEventListener("mouseleave", () => {
+      scheduleClose();
+    });
   }
 
   // src/util/share-url.js
@@ -5346,7 +5478,9 @@ ${text}</tr>
     const maxEventsPerDay = config.maxEventsPerDay || 3;
     const i18n = config.i18n || {};
     const moreEventsTemplate = i18n.moreEvents || "+{count} more";
+    closeEventPopover();
     events = filterHidden(events);
+    const popoverRoot = container.closest?.(".already") || container;
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
@@ -5422,6 +5556,9 @@ ${text}</tr>
       const dayNum = createElement("div", "already-month-day");
       dayNum.textContent = d;
       cell.appendChild(dayNum);
+      cell.addEventListener("click", () => {
+        setDayView(toDateKey(cellDate), config);
+      });
       for (const event of dayEvents.slice(0, maxEventsPerDay)) {
         const chip = createElement(
           "div",
@@ -5429,6 +5566,7 @@ ${text}</tr>
         );
         chip.textContent = event.title;
         bindEventClick(chip, event, "month", config, { stopPropagation: true });
+        bindEventPopover(chip, event, popoverRoot, { ...config, timezone });
         cell.appendChild(chip);
       }
       if (dayEvents.length > maxEventsPerDay) {
@@ -5496,6 +5634,8 @@ ${text}</tr>
     });
     nav.appendChild(nextBtn);
     week.appendChild(nav);
+    closeEventPopover();
+    const popoverRoot = container.closest?.(".already") || container;
     const columns = createElement("div", "already-week-columns");
     const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
       weekday: "short"
@@ -5526,9 +5666,13 @@ ${text}</tr>
           "already-week-event" + (event.featured ? " already-week-event--featured" : "")
         );
         block2.textContent = event.title;
-        bindEventClick(block2, event, "week", config);
+        bindEventClick(block2, event, "week", config, { stopPropagation: true });
+        bindEventPopover(block2, event, popoverRoot, { ...config, timezone });
         col.appendChild(block2);
       }
+      col.addEventListener("click", () => {
+        setDayView(toDateKey(date), config);
+      });
       columns.appendChild(col);
     }
     week.appendChild(columns);
@@ -5818,6 +5962,7 @@ ${text}</tr>
       };
     }
     function renderView(viewState) {
+      closeEventPopover();
       viewContainer.querySelector(".already-detail-share")?.destroy?.();
       headerContainer.querySelector(".already-header-share")?.toggleAttribute("hidden", viewState.view === "detail");
       lastViewState = viewState;
@@ -6105,6 +6250,7 @@ ${text}</tr>
       window.removeEventListener("message", handleMessage);
       if (removeHashListener) removeHashListener();
       if (interactionCleanup) interactionCleanup();
+      closeEventPopover();
       headerContainer.querySelector(".already-header-share")?.destroy?.();
       headerContainer.querySelector(".already-subscribe-menu")?.destroy?.();
       viewContainer.querySelector(".already-detail-share")?.destroy?.();
