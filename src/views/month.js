@@ -69,7 +69,9 @@ export function renderMonthView(
   nav.appendChild(prevBtn);
 
   const title = createElement("span", "already-month-title");
-  title.textContent = `${monthName} ${year}`;
+  // getMonthName already formats { month: "long", year: "numeric" }, so it
+  // returns "September 2026". Appending year again rendered "September 2026 2026".
+  title.textContent = monthName;
   nav.appendChild(title);
 
   const nextBtn = createElement("button", "already-month-next", {
