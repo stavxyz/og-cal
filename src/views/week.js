@@ -1,8 +1,11 @@
+import { setDayView } from "../router.js";
+import { bindEventPopover, closeEventPopover } from "../ui/event-popover.js";
 import {
   formatDateShort,
   getEventDateParts,
   getWeekDates,
   isToday,
+  toDateKey,
 } from "../util/dates.js";
 import {
   bindEventClick,
@@ -25,6 +28,15 @@ export function renderWeekView(
   const dates = getWeekDates(currentDate, weekStartDay);
 
   events = filterHidden(events);
+
+  const popoverRoot = container.closest?.(".already") || container;
+  // The nav buttons re-render by calling this function directly, bypassing
+  // already-cal.js's renderView. A block destroyed under the pointer never
+  // fires mouseleave, so close here too or the card hangs.
+  closeEventPopover(popoverRoot);
+  // An embedder who left "day" out of `views` disabled it deliberately, and
+  // renderView's switch has no guard of its own.
+  const dayViewEnabled = !config.views || config.views.includes("day");
 
   const week = createElement("div", "already-week");
 
@@ -103,9 +115,21 @@ export function renderWeekView(
           (event.featured ? " already-week-event--featured" : ""),
       );
       block.textContent = event.title;
+      // No stopPropagation: the click has to reach the root's interaction
+      // listener, which posts the cross-origin engagement signal. The column
+      // handler below bails on block clicks by target instead.
       bindEventClick(block, event, "week", config);
+      bindEventPopover(block, event, popoverRoot, config, "week");
       col.appendChild(block);
     }
+
+    // Pointer-only, matching month: see the comment there for why this
+    // carries no role or tabindex.
+    col.addEventListener("click", (e) => {
+      if (e.target.closest?.(".already-week-event")) return;
+      if (!dayViewEnabled) return;
+      setDayView(toDateKey(date), config);
+    });
 
     columns.appendChild(col);
   }

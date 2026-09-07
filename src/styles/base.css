@@ -26,6 +26,9 @@
 
 /* ===== Container ===== */
 .already {
+  /* The event popover is absolutely positioned and measures its offsets
+     from this element, so this root has to be its containing block. */
+  position: relative;
   /* Semantic border tokens, derived from --already-border.
        control -> tab strip, nav bars, buttons, dropdowns
        grid    -> weekday header, week columns, event row separators
@@ -413,6 +416,9 @@
   border: 1px solid transparent;
   border-radius: 4px;
   position: relative;
+  /* Navigates to that day. Pointer-only by design: no role and no
+     tabindex, so the cursor is the whole affordance (issue #68). */
+  cursor: pointer;
 }
 
 .already-month-cell--empty {
@@ -531,6 +537,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  /* Navigates to that day. Pointer-only by design: no role and no
+     tabindex, so the cursor is the whole affordance (issue #68). */
+  cursor: pointer;
 }
 
 .already-week-col:last-child {
@@ -1486,4 +1495,62 @@
 
 .already-tag-clear:hover {
   color: var(--already-text);
+}
+
+/* Event popover: the grid card, shown on hover or tap from month and week.
+   Parented to `.already` so it inherits the theme's custom properties. */
+.already-event-popover {
+  position: absolute;
+  z-index: 20;
+  width: 300px;
+  max-width: calc(100% - 1rem);
+  background: var(--already-surface);
+  border: 1px solid var(--already-border-control);
+  border-radius: var(--already-radius);
+  box-shadow: var(--already-shadow-hover);
+}
+
+/* The cue that clicking the card opens the detail view: pointer cursor, a
+   lift, and a chevron that nudges right on hover. No instructional text. */
+.already-event-popover__card {
+  cursor: pointer;
+  position: relative;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.already-event-popover__card::after {
+  content: "\203a";
+  position: absolute;
+  top: 0.5rem;
+  right: 0.625rem;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--already-text-secondary);
+  transition: transform 0.15s ease;
+}
+
+/* A distinct shadow, not --already-shadow-hover: the container already draws
+   that one, so reusing it here reads as no change on hover. */
+.already-event-popover__card:hover {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+  transform: translateY(-1px);
+}
+
+.already-event-popover__card:hover::after {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .already-event-popover__card,
+  .already-event-popover__card::after {
+    transition: none;
+  }
+  .already-event-popover__card:hover {
+    transform: none;
+  }
+  .already-event-popover__card:hover::after {
+    transform: none;
+  }
 }

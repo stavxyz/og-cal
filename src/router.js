@@ -63,6 +63,19 @@ export function setView(view, config) {
   localStorage.setItem(key, view);
 }
 
+/**
+ * Navigate to the day view for a specific date.
+ *
+ * `dateStr` must be YYYY-MM-DD built from local calendar fields (see
+ * toDateKey), matching the `#day/2026-04-04` shape parseHash reads back.
+ * Persists "day" the way setView does, so a reload returns to the day view.
+ */
+export function setDayView(dateStr, config) {
+  window.location.hash = `day/${dateStr}`;
+  const key = storageKey(config);
+  localStorage.setItem(key, "day");
+}
+
 /** Navigate to an event's detail view by setting the URL hash. */
 export function setEventDetail(eventId) {
   window.location.hash = `event/${eventId}`;

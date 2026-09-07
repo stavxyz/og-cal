@@ -3,6 +3,7 @@ import { register } from "./registry.js";
 import { getInitialView, onHashChange, parseHash, setView } from "./router.js";
 import { applyTheme } from "./theme.js";
 import { addThemeName, getTheme, getThemeNames } from "./themes/registry.js";
+import { closeEventPopover } from "./ui/event-popover.js";
 import { renderHeader } from "./ui/header.js";
 import { paginateEvents, renderPaginationButtons } from "./ui/pagination.js";
 import { renderPastToggle } from "./ui/past-toggle.js";
@@ -17,6 +18,7 @@ import { renderViewSelector } from "./ui/view-selector.js";
 import {
   formatDateRange,
   isPast,
+  parseDateKey,
   resolveTimeZone,
   zoneAbbrev,
 } from "./util/dates.js";
@@ -402,6 +404,11 @@ export function init(userConfig) {
   }
 
   function renderView(viewState) {
+    // A re-render destroys the chip the pointer is sitting on, so no further
+    // pointer event ever fires on it and an open card would hang there
+    // permanently. Month and week nav re-render through their own view
+    // functions rather than here, so those close separately.
+    closeEventPopover(el);
     // Tear down the prior detail-view share button's pending revert timer
     // before this render replaces it, so a stale timer can't fire late.
     viewContainer.querySelector(".already-detail-share")?.destroy?.();
@@ -474,7 +481,9 @@ export function init(userConfig) {
         renderWeekView(viewContainer, events, timezone, currentDate, config);
         break;
       case "day": {
-        const dayDate = viewState.date ? new Date(viewState.date) : currentDate;
+        const dayDate = viewState.date
+          ? parseDateKey(viewState.date)
+          : currentDate;
         renderDayView(viewContainer, events, timezone, dayDate, config);
         break;
       }
@@ -813,6 +822,7 @@ export function init(userConfig) {
     window.removeEventListener("message", handleMessage);
     if (removeHashListener) removeHashListener();
     if (interactionCleanup) interactionCleanup();
+    closeEventPopover(el);
     // Cancel any pending share-button revert timers — the header button
     // persists across renders; the current view may also have one pending.
     headerContainer.querySelector(".already-header-share")?.destroy?.();

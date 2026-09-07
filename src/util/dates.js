@@ -342,6 +342,35 @@ export const MONTH_NAMES_SHORT = [
   "DEC",
 ];
 
+/**
+ * Format a Date as YYYY-MM-DD using its LOCAL calendar fields.
+ *
+ * Not `toISOString().slice(0, 10)`: that reads the UTC day, which differs from
+ * the local day for most of the clock in any non-UTC zone. A month cell built
+ * from `new Date(year, month, d)` is local midnight, so in UTC+14 the UTC day
+ * is already the previous date and the viewer would land on the wrong day.
+ */
+export function toDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Parse a YYYY-MM-DD key back into a Date at LOCAL midnight.
+ *
+ * The inverse of toDateKey, and the reason both exist. `new Date("2026-04-04")`
+ * parses the date-only ISO form as UTC midnight, so in America/Chicago it
+ * yields 19:00 on April 3. Every consumer of a day key compares it with local
+ * getters (isSameDay), so the key has to come back as the same local day it
+ * went out as.
+ */
+export function parseDateKey(key) {
+  const [year, month, day] = String(key).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 /** Return an array of 7 Date objects representing the week containing the given date. */
 export function getWeekDates(date, weekStartDay) {
   weekStartDay = weekStartDay || 0;

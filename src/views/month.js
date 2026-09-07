@@ -1,3 +1,5 @@
+import { setDayView } from "../router.js";
+import { bindEventPopover, closeEventPopover } from "../ui/event-popover.js";
 import {
   getDayNames,
   getDaysInMonth,
@@ -5,6 +7,7 @@ import {
   getFirstDayOfMonth,
   getMonthName,
   isToday,
+  toDateKey,
 } from "../util/dates.js";
 import {
   bindEventClick,
@@ -28,7 +31,20 @@ export function renderMonthView(
   const i18n = config.i18n || {};
   const moreEventsTemplate = i18n.moreEvents || "+{count} more";
 
+  // The nav buttons below re-render by calling this function directly,
+  // bypassing already-cal.js's renderView. A chip destroyed under the
+  // pointer never fires mouseleave, so close here too or the card hangs.
+  closeEventPopover(container.closest?.(".already") || container);
+
   events = filterHidden(events);
+
+  // The popover parents to the `.already` root so it inherits the theme's
+  // custom properties; `container` is the inner view container.
+  const popoverRoot = container.closest?.(".already") || container;
+  // An embedder who left "day" out of `views` disabled it deliberately, and
+  // renderView's switch has no guard of its own, so navigating there would
+  // strand them in a view their selector does not list.
+  const dayViewEnabled = !config.views || config.views.includes("day");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -132,6 +148,17 @@ export function renderMonthView(
     dayNum.textContent = d;
     cell.appendChild(dayNum);
 
+    // Pointer-only affordance: no role="button" and no tabindex, because
+    // there is deliberately no keyboard path here (adding 31 tab stops to a
+    // grid whose chips are already focusable costs more than it buys).
+    // Claiming to be a button while unreachable by keyboard would be worse
+    // than not claiming it. Chips stopPropagation, so they win over the cell.
+    cell.addEventListener("click", (e) => {
+      if (e.target.closest?.(".already-month-chip")) return;
+      if (!dayViewEnabled) return;
+      setDayView(toDateKey(cellDate), config);
+    });
+
     for (const event of dayEvents.slice(0, maxEventsPerDay)) {
       const chip = createElement(
         "div",
@@ -139,7 +166,11 @@ export function renderMonthView(
           (event.featured ? " already-month-chip--featured" : ""),
       );
       chip.textContent = event.title;
-      bindEventClick(chip, event, "month", config, { stopPropagation: true });
+      // No stopPropagation: the click has to reach the root's interaction
+      // listener, which posts the cross-origin engagement signal. The cell
+      // handler below bails on chip clicks by target instead.
+      bindEventClick(chip, event, "month", config);
+      bindEventPopover(chip, event, popoverRoot, config, "month");
       cell.appendChild(chip);
     }
 
