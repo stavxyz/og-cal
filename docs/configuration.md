@@ -76,7 +76,9 @@ Theme properties are applied as CSS custom properties on the `.already` element.
 | `surface` | `--already-surface` | `'#ffffff'` | Card and surface background |
 | `text` | `--already-text` | `'#1a1a1a'` | Primary text color |
 | `textSecondary` | `--already-text-secondary` | `'#666'` | Secondary/meta text color |
-| `border` | `--already-border` | `'rgba(0, 0, 0, 0.06)'` | Border color |
+| `border` | `--already-border` | `'rgba(0, 0, 0, 0.06)'` | Base border color; the two below fall back to it |
+| `borderControl` | `--already-border-control` | inherits `border` | Chrome: view tabs, nav bars, buttons, dropdowns, card tags |
+| `borderGrid` | `--already-border-grid` | inherits `border` | Internal lines: weekday header, week columns, event and card separators |
 | `fontFamily` | `--already-font-family` | `'system-ui, sans-serif'` | Font stack |
 | `fontWeightNormal` | `--already-font-weight-normal` | `'400'` | Normal font weight |
 | `fontWeightBold` | `--already-font-weight-bold` | `'700'` | Bold font weight |

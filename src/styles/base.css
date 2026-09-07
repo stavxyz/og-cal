@@ -26,6 +26,25 @@
 
 /* ===== Container ===== */
 .already {
+  /* Semantic border tokens, derived from --already-border.
+       control -> tab strip, nav bars, buttons, dropdowns
+       grid    -> weekday header, week columns, event row separators
+
+     DECLARED HERE, NOT ON :root, and that is load-bearing. `var()` inside a
+     custom property is substituted at computed-value time on the element the
+     declaration lands on, not lazily at each use site. Declared on :root they
+     captured :root's --already-border (the base default) and inherited that
+     literal downward, so a palette (.already[data-palette]) or a runtime
+     el.style.setProperty on .already never reached them: the dark palette
+     rendered 6%-black borders on a #1a1a1a surface, and a theme setting only
+     `border` silently lost it everywhere. Declaring them on the same element
+     the overrides land on is what makes the fallback actually inherit.
+
+     Palette rules are .already[data-palette="..."] (0,2,0) and still outrank
+     this (0,1,0) for --already-border, and an inline override still outranks
+     both for the derived tokens themselves. */
+  --already-border-control: var(--already-border);
+  --already-border-grid: var(--already-border);
   font-family: var(--already-font-family);
   color: var(--already-text);
   background: var(--already-background);
@@ -177,7 +196,7 @@
   display: flex;
   flex-direction: column;
   background: var(--already-surface);
-  border: 1px solid var(--already-border);
+  border: 1px solid var(--already-border-control);
   border-radius: var(--already-radius);
   padding: 0.25rem;
   list-style: none;
@@ -258,7 +277,7 @@
   background: var(--already-surface);
   border-radius: var(--already-radius);
   overflow: hidden;
-  border: 1px solid var(--already-border);
+  border: 1px solid var(--already-border-control);
 }
 
 .already-view-tab {
@@ -331,7 +350,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-control);
 }
 
 .already-month-prev,
@@ -349,7 +368,7 @@
 
 .already-month-prev:hover,
 .already-month-next:hover {
-  background: var(--already-border);
+  background: var(--already-highlight);
 }
 
 .already-month-prev:focus-visible,
@@ -366,7 +385,7 @@
 .already-month-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-grid);
 }
 
 .already-month-dayname {
@@ -468,7 +487,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-control);
 }
 
 .already-week-prev,
@@ -486,7 +505,7 @@
 
 .already-week-prev:hover,
 .already-week-next:hover {
-  background: var(--already-border);
+  background: var(--already-highlight);
 }
 
 .already-week-prev:focus-visible,
@@ -507,7 +526,7 @@
 }
 
 .already-week-col {
-  border-right: 1px solid var(--already-border);
+  border-right: 1px solid var(--already-border-grid);
   padding: 0.5rem 0.25rem;
   display: flex;
   flex-direction: column;
@@ -525,7 +544,7 @@
 .already-week-col-header {
   text-align: center;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-grid);
   margin-bottom: 0.25rem;
 }
 
@@ -583,7 +602,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-control);
 }
 
 .already-day-prev,
@@ -601,7 +620,7 @@
 
 .already-day-prev:hover,
 .already-day-next:hover {
-  background: var(--already-border);
+  background: var(--already-highlight);
 }
 
 .already-day-prev:focus-visible,
@@ -627,7 +646,7 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--already-border);
+  border-bottom: 1px solid var(--already-border-grid);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -1157,7 +1176,7 @@
 /* ===== Past Toggle ===== */
 .already-past-toggle {
   background: none;
-  border: 1px solid var(--already-border);
+  border: 1px solid var(--already-border-control);
   color: var(--already-text-secondary);
   font-size: 0.8125rem;
   padding: 0.375rem 0.75rem;
@@ -1201,7 +1220,7 @@
 .already-load-more,
 .already-show-earlier {
   background: none;
-  border: 1px solid var(--already-border);
+  border: 1px solid var(--already-border-control);
   color: var(--already-text-secondary);
   font-size: 0.8125rem;
   padding: 0.375rem 0.75rem;
