@@ -1,8 +1,11 @@
+import { setDayView } from "../router.js";
+import { bindEventPopover, closeEventPopover } from "../ui/event-popover.js";
 import {
   formatDateShort,
   getEventDateParts,
   getWeekDates,
   isToday,
+  toDateKey,
 } from "../util/dates.js";
 import {
   bindEventClick,
@@ -61,6 +64,13 @@ export function renderWeekView(
 
   week.appendChild(nav);
 
+  // The nav buttons below re-render by calling this function directly,
+  // bypassing already-cal.js's renderView. A chip destroyed under the
+  // pointer never fires mouseleave, so close here too or the card hangs.
+  closeEventPopover();
+
+  const popoverRoot = container.closest?.(".already") || container;
+
   const columns = createElement("div", "already-week-columns");
   const dayFmt = new Intl.DateTimeFormat(locale || "en-US", {
     weekday: "short",
@@ -103,9 +113,19 @@ export function renderWeekView(
           (event.featured ? " already-week-event--featured" : ""),
       );
       block.textContent = event.title;
-      bindEventClick(block, event, "week", config);
+      // stopPropagation so an event click does not also fire the column's
+      // day navigation below. Month's chips already pass this; week's did
+      // not, because until now nothing listened on the column.
+      bindEventClick(block, event, "week", config, { stopPropagation: true });
+      bindEventPopover(block, event, popoverRoot, { ...config, timezone });
       col.appendChild(block);
     }
+
+    // Pointer-only, matching month: see the comment there for why this
+    // carries no role or tabindex.
+    col.addEventListener("click", () => {
+      setDayView(toDateKey(date), config);
+    });
 
     columns.appendChild(col);
   }

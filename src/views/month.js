@@ -1,3 +1,5 @@
+import { setDayView } from "../router.js";
+import { bindEventPopover, closeEventPopover } from "../ui/event-popover.js";
 import {
   getDayNames,
   getDaysInMonth,
@@ -5,6 +7,7 @@ import {
   getFirstDayOfMonth,
   getMonthName,
   isToday,
+  toDateKey,
 } from "../util/dates.js";
 import {
   bindEventClick,
@@ -28,7 +31,16 @@ export function renderMonthView(
   const i18n = config.i18n || {};
   const moreEventsTemplate = i18n.moreEvents || "+{count} more";
 
+  // The nav buttons below re-render by calling this function directly,
+  // bypassing already-cal.js's renderView. A chip destroyed under the
+  // pointer never fires mouseleave, so close here too or the card hangs.
+  closeEventPopover();
+
   events = filterHidden(events);
+
+  // The popover parents to the `.already` root so it inherits the theme's
+  // custom properties; `container` is the inner view container.
+  const popoverRoot = container.closest?.(".already") || container;
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -132,6 +144,15 @@ export function renderMonthView(
     dayNum.textContent = d;
     cell.appendChild(dayNum);
 
+    // Pointer-only affordance: no role="button" and no tabindex, because
+    // there is deliberately no keyboard path here (adding 31 tab stops to a
+    // grid whose chips are already focusable costs more than it buys).
+    // Claiming to be a button while unreachable by keyboard would be worse
+    // than not claiming it. Chips stopPropagation, so they win over the cell.
+    cell.addEventListener("click", () => {
+      setDayView(toDateKey(cellDate), config);
+    });
+
     for (const event of dayEvents.slice(0, maxEventsPerDay)) {
       const chip = createElement(
         "div",
@@ -140,6 +161,7 @@ export function renderMonthView(
       );
       chip.textContent = event.title;
       bindEventClick(chip, event, "month", config, { stopPropagation: true });
+      bindEventPopover(chip, event, popoverRoot, { ...config, timezone });
       cell.appendChild(chip);
     }
 
